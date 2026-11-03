@@ -41,7 +41,7 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.1.6-debug.apk
+          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.1.7-debug.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -54,20 +54,23 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.1.6
-          name: "AI求职悬浮助手 v1.1.6 (固定全局签名/支持直接覆盖安装更新)"
+          tag_name: v1.1.7
+          name: "AI求职悬浮助手 v1.1.7 (全盘假数据拔除/真实连通性/UI彻底整修)"
           body: |
-            AI 求职悬浮助手 v1.1.6 核心工程体验突破：
-            1. 彻底解决每次更新需卸载旧 App 的痛点：
-               - 仓库内置永久持久化签名密钥库（debug.keystore），使每次 GitHub Actions 云端编译出的 APK 均拥有完全一致的数字加密公钥与 SHA-256 指纹；
-               - 完美通过 Android 系统的 PackageManager 覆盖签名校验；
-               - 今后每一次升级只需直接点击「覆盖安装 / 更新」，本地保存的 API Key、自定义提示词、简历档案数据与设置 100% 完整保留，告别手动卸载。
-            2. 包含 v1.1.5 的全部底栏动效与交互优化：
-               - 底部导航栏平滑横滑动效（Material Design 3 Shared Axis X 规范）；
-               - 简历档案纯净空白录入引导态；
-               - 模型卡片高亮选中态；
-               - 顶部 Header 药丸排版防挤压展示。
-          files: release_apk/JobAssistant-v1.1.6-debug.apk
+            AI 求职悬浮助手 v1.1.7 全盘去伪存真与体验升级：
+            1. 彻底拔除所有虚假数据：
+               - 设置页连通性卡片真实联动：未填写 API Key 时明确显示「离线状态 · 0 个可用模型」，严禁无 Key 伪造「连通性极佳 · Ping 88ms」；填写后真实发起网络测速，显示实际延迟与真实拉取的模型数量；
+               - 悬浮主控看板去伪：今日识别为 0 次时，战绩指标真实显示「--% / -- s」，移除写死的虚假 100% 和 0.6s；
+               - 设置页模拟打招呼弹窗去伪：彻底移除写死的 3 条假前端话术，接入大模型真实在线推理生成。
+            2. 彻底整修「AI 精炼优势」卡片 UI 与功能：
+               - 视觉排版重构：消除背景色彩与边框冲突，对齐统一设计规范；
+               - 真实 AI 一键生成：新增「AI 一键从简历提炼」功能，真实调用大模型提炼个人核心亮点，拒绝假 AI；
+               - 编辑模式布局规范化：取消与保存按钮统一底置，交互自然流畅。
+            3. 顶部 Header 药丸排版防挤压与真实版本绑定：
+               - 彻底解决版本胶囊被挤压截断为「• P」的严重排版 Bug，真实绑定当前应用版本号 v1.1.7；
+            4. 继承持久化 debug.keystore 签名：
+               - 本次及后续所有版本均支持直接覆盖更新安装，数据完全保留。
+          files: release_apk/JobAssistant-v1.1.7-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
