@@ -354,7 +354,16 @@ class FloatingService : Service() {
 
         val jdStatusBadge = TextView(this).apply {
             val count = initialJd.length
-            if (count >= 20) {
+            val matchedTitle = JobAccessibilityService.lastMatchedJobTitle
+            if (matchedTitle.isNotBlank()) {
+                val shortTitle = if (matchedTitle.length > 7) matchedTitle.take(7) + ".." else matchedTitle
+                text = "记忆池 · $shortTitle"
+                setTextColor(Color.parseColor("#4F46E5"))
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#EEF2FF"))
+                    cornerRadius = 6 * density
+                }
+            } else if (count >= 20) {
                 val isMerged = JobAccessibilityService.isLongJdMerged()
                 text = if (isMerged) "合并长JD · ${count}字" else "已就绪 · ${count}字"
                 setTextColor(Color.parseColor("#059669"))

@@ -551,6 +551,71 @@ $rawText
         }
     }
 
+
+    private suspend fun callDeepSeek(
+        context: Context,
+        systemPrompt: String,
+        userContent: String,
+        temperature: Double = 0.7
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val apiKey = StorageManager.getApiKey(context)
+            if (apiKey.isBlank()) {
+                return@withContext Result.failure(Exception("请先在设置中配置 API Key"))
+            }
+
+            val endpoint = StorageManager.getBaseUrl(context).trimEnd('/') + "/chat/completions"
+            val model = StorageManager.getModel(context)
+
+            val messagesArray = JSONArray().apply {
+                if (systemPrompt.isNotBlank()) {
+                    put(JSONObject().apply {
+                        put("role", "system")
+                        put("content", systemPrompt)
+                    })
+                }
+                put(JSONObject().apply {
+                    put("role", "user")
+                    put("content", userContent)
+                })
+            }
+
+            val requestBodyJson = JSONObject().apply {
+                put("model", model)
+                put("messages", messagesArray)
+                put("temperature", temperature)
+            }
+
+            val request = Request.Builder()
+                .url(endpoint)
+                .addHeader("Authorization", "Bearer $apiKey")
+                .addHeader("Content-Type", "application/json")
+                .post(requestBodyJson.toString().toRequestBody(JSON_MEDIA_TYPE))
+                .build()
+
+            val response = client.newCall(request).execute()
+            val responseBody = response.body?.string() ?: ""
+
+            if (!response.isSuccessful) {
+                return@withContext Result.failure(Exception("API 响应失败 (${response.code}): $responseBody"))
+            }
+
+            val responseJson = JSONObject(responseBody)
+            val choices = responseJson.optJSONArray("choices")
+            if (choices == null || choices.length() == 0) {
+                return@withContext Result.failure(Exception("AI 响应未包含有效内容: $responseBody"))
+            }
+
+            val content = choices.getJSONObject(0)
+                .getJSONObject("message")
+                .getString("content")
+                .trim()
+            Result.success(content)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun generateInterviewQuestions(
         context: Context,
         jdText: String,

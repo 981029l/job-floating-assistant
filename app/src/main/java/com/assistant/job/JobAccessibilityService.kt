@@ -23,6 +23,86 @@ class JobAccessibilityService : AccessibilityService() {
         private var lastWindowClassName: String = ""
         private var isMergedLongJd: Boolean = false
 
+        data class JobMemoryItem(
+            val title: String,
+            val company: String,
+            val fullJd: String,
+            val timestamp: Long = System.currentTimeMillis()
+        )
+
+        val jobMemoryPool = mutableListOf<JobMemoryItem>()
+        var lastMatchedJobTitle: String = ""
+
+        fun recordJobToMemoryPool(lines: List<String>, fullText: String) {
+            if (fullText.length < 20) return
+            var title = ""
+            var company = ""
+
+            for (line in lines.take(15)) {
+                val trimmed = line.trim()
+                if (title.isBlank() && trimmed.length in 3..25) {
+                    if (trimmed.contains("工程师") || trimmed.contains("开发") || trimmed.contains("前端") ||
+                        trimmed.contains("后端") || trimmed.contains("架构") || trimmed.contains("设计") ||
+                        trimmed.contains("产品") || trimmed.contains("算法") || trimmed.contains("测试") ||
+                        trimmed.contains("Java") || trimmed.contains("Android") || trimmed.contains("iOS") ||
+                        trimmed.contains("专家") || trimmed.contains("总监") || trimmed.contains("经理") ||
+                        trimmed.contains("主管") || trimmed.contains("专员") || trimmed.contains("实习")
+                    ) {
+                        title = trimmed
+                        continue
+                    }
+                }
+                if (company.isBlank() && trimmed.length in 3..30) {
+                    if (trimmed.contains("公司") || trimmed.contains("科技") || trimmed.contains("网络") ||
+                        trimmed.contains("信息") || trimmed.contains("集团") || trimmed.contains("工作室") ||
+                        trimmed.contains("互娱") || trimmed.contains("企业") || trimmed.contains("银行")
+                    ) {
+                        company = trimmed
+                    }
+                }
+            }
+
+            if (title.isBlank() && lines.isNotEmpty()) {
+                title = lines.firstOrNull { it.length in 3..25 && !it.contains("立即沟通") && !it.contains("发简历") } ?: ""
+            }
+
+            if (title.isNotBlank()) {
+                synchronized(jobMemoryPool) {
+                    jobMemoryPool.removeAll { it.title == title || (it.company.isNotBlank() && it.company == company && it.title == title) }
+                    jobMemoryPool.add(0, JobMemoryItem(title, company, fullText))
+                    if (jobMemoryPool.size > 50) {
+                        jobMemoryPool.removeAt(jobMemoryPool.size - 1)
+                    }
+                }
+            }
+        }
+
+        fun findMatchingJdInChat(chatLines: List<String>): JobMemoryItem? {
+            synchronized(jobMemoryPool) {
+                if (jobMemoryPool.isEmpty()) return null
+                for (item in jobMemoryPool) {
+                    val titleMatch = item.title.isNotBlank() && chatLines.any { line ->
+                        line.contains(item.title) || item.title.contains(line)
+                    }
+                    val companyMatch = item.company.isNotBlank() && chatLines.any { line ->
+                        line.contains(item.company) || item.company.contains(line)
+                    }
+                    if (titleMatch || (companyMatch && chatLines.any { it.length in 3..25 && (it.contains("工程师") || it.contains("开发")) })) {
+                        lastMatchedJobTitle = item.title
+                        return item
+                    }
+                }
+                val latest = jobMemoryPool.firstOrNull()
+                if (latest != null && System.currentTimeMillis() - latest.timestamp < 10 * 60 * 1000) {
+                    lastMatchedJobTitle = latest.title
+                    return latest
+                }
+                lastMatchedJobTitle = ""
+                return null
+            }
+        }
+
+
         data class SceneInspection(
             val mode: GenerationMode,
             val jdText: String,
@@ -104,7 +184,24 @@ class JobAccessibilityService : AccessibilityService() {
 
                 val chatHistory = historyCandidates.takeLast(4).joinToString("\n")
                 val latestMessage = if (isHrReplied) lastLine else (historyCandidates.lastOrNull() ?: "")
-                val jdText = if (lastExtractedJd.length >= 20) lastExtractedJd else allTextLines.joinToString("\n").take(300)
+
+                val matchedJob = findMatchingJdInChat(allTextLines)
+                val jdText = if (matchedJob != null && matchedJob.fullJd.length >= 20) {
+                    matchedJob.fullJd
+                } else if (lastExtractedJd.length >= 20) {
+                    lastExtractedJd
+                } else {
+                    val candidateTitle = allTextLines.firstOrNull { line ->
+                        line.length in 3..25 && (line.contains("前端") || line.contains("后端") || line.contains("工程师") ||
+                                line.contains("开发") || line.contains("架构") || line.contains("设计") ||
+                                line.contains("产品") || line.contains("算法") || line.contains("测试") ||
+                                line.contains("Java") || line.contains("Android") || line.contains("iOS"))
+                    } ?: allTextLines.firstOrNull { it.length in 3..20 && !it.contains("已读") && !it.contains("送达") } ?: "目标岗位"
+
+                    val candidateSalary = allTextLines.firstOrNull { it.matches(Regex(".*\\d+[-~至]\\d+[kK万千].*")) } ?: ""
+
+                    "【目标岗位】：$candidateTitle ${if (candidateSalary.isNotBlank()) "($candidateSalary)" else ""}\n（注：当前处于聊天沟通界面，未在屏幕发现长任职要求，已提取顶栏职位特征并针对对方最新消息与候选人简历智能应答）"
+                }
                 val fullScreen = allTextLines.joinToString("\n")
                 val hasResumeMention = fullScreen.contains("简历") || fullScreen.contains("附件")
                 val resumeStatus = if (hasResumeMention) "聊天中已出现简历发送或索要记录" else "暂未发送简历"
@@ -201,6 +298,7 @@ class JobAccessibilityService : AccessibilityService() {
             if (fullAccumulated.length >= 20) {
                 lastExtractedJd = fullAccumulated
                 cachedAppScreenText = fullAccumulated
+                recordJobToMemoryPool(accumulatedLines.toList(), fullAccumulated)
                 return fullAccumulated
             }
 
@@ -208,6 +306,7 @@ class JobAccessibilityService : AccessibilityService() {
             if (singleSnapshot.length >= 20) {
                 lastExtractedJd = singleSnapshot
                 cachedAppScreenText = singleSnapshot
+                recordJobToMemoryPool(currentLines, singleSnapshot)
                 return singleSnapshot
             }
 

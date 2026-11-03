@@ -41,7 +41,7 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.2.9.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.3.0.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -54,19 +54,21 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.2.9
-          name: "AI求职悬浮助手 v1.2.9 (新增岗位全真模拟面试押题专区/纯净正式版APK)"
+          tag_name: v1.3.0
+          name: "AI求职悬浮助手 v1.3.0 (职位特征与JD记忆池/聊天界面智能命中/纯净正式版APK)"
           body: |
-            AI 求职悬浮助手 v1.2.9 全新重磅升级：
-            1. 全新上线【岗位针对性模拟面试 · 考点预测押题】（主应用独立 Tab 2）：
-               - 深度穿透 4 维考题矩阵：技术深水区原理、项目经历真实性深挖、架构场景设计、HR 与综合沟通；
-               - 智能关联：一键同步无障碍服务抓取的当前岗位真实 JD，自动结合候选人简历真实经历；
-               - 专业解析：每道题目附带【考官核心意图与考核陷阱】+【STAR 法则满分回答思路】+【大厂面试避坑红线】；
-               - 支持全考点分类筛选过滤与一键复制考题解析。
-            2. 正式安装包全面去除「-debug」后缀：
-               - 产物全面正规化，规范命名为 JobAssistant-v1.2.9.apk；
+            AI 求职悬浮助手 v1.3.0 跨代重磅升级：
+            1. 全新上线【职位特征与 JD 记忆池】（彻底攻克聊天页无 JD 行业顽疾）：
+               - 详情页无感建池：在 BOSS 浏览岗位时自动提取职位名、公司名与完整任职要求，建立 50 条高速记忆池；
+               - 聊天页秒级命中：从消息列表直接进入聊天时，根据顶部卡片特征自动命中对应完整长 JD；
+               - 智能降级兜底：未建池的全新沟通直接提取顶栏职位与薪资特征，结合最新聊天与简历生成高情商推进话术。
+            2. 主应用独立 Tab 2【岗位针对性模拟面试 · 考点预测押题】完整上线：
+               - 4 维考题深度穿透：技术深水区原理、项目经历真实性深挖、架构场景设计、HR 与综合沟通；
+               - 每道题附带【考官考察意图】+【STAR 法则满分回答逻辑】+【大厂避坑红线】。
+            3. 正式发布包全面去除「-debug」后缀：
+               - 产物规范命名为 JobAssistant-v1.3.0.apk；
                - 继承统一固化密钥签名，已安装的老板/用户可直接一键无缝覆盖更新，数据 100% 完整保留。
-          files: release_apk/JobAssistant-v1.2.9.apk
+          files: release_apk/JobAssistant-v1.3.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
