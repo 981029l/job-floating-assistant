@@ -30,6 +30,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -224,8 +232,21 @@ fun MainScreen() {
             )
 
             // 各 Tab 视窗
-            Box(modifier = Modifier.fillMaxSize()) {
-                when (selectedTab) {
+            AnimatedContent(
+                targetState = selectedTab,
+                transitionSpec = {
+                    if (targetState > initialState) {
+                        (slideInHorizontally(animationSpec = tween(280, easing = FastOutSlowInEasing)) { width -> width } + fadeIn(animationSpec = tween(280)))
+                            .togetherWith(slideOutHorizontally(animationSpec = tween(280, easing = FastOutSlowInEasing)) { width -> -width } + fadeOut(animationSpec = tween(280)))
+                    } else {
+                        (slideInHorizontally(animationSpec = tween(280, easing = FastOutSlowInEasing)) { width -> -width } + fadeIn(animationSpec = tween(280)))
+                            .togetherWith(slideOutHorizontally(animationSpec = tween(280, easing = FastOutSlowInEasing)) { width -> width } + fadeOut(animationSpec = tween(280)))
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+                label = "TabContentTransition"
+            ) { targetTab ->
+                when (targetTab) {
                     0 -> DashboardTab(
                         context = context,
                         overlayGranted = overlayGranted,
