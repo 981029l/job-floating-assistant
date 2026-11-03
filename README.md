@@ -43,7 +43,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.2.2-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.2/JobAssistant-v1.2.2-debug.apk)
+- **最新正式版直链**：[JobAssistant-v1.2.3-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.3/JobAssistant-v1.2.3-debug.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -104,6 +104,13 @@ job-floating-assistant/
 
 ## 版本演进记录
 
+- **v1.2.3**：
+  - 无障碍聊天状态智能感知：自动探测是否处于招聘聊天页面，并精准感知「已读」或「未读/送达」状态；
+  - 悬浮窗三档场景切换 Tab：新增「首次破冰 · 初次开聊」、「已读未回 · 二度攻坚」、「未读唤醒 · 轻量触达」分段选项卡，支持自动预选与手动即时切换；
+  - 官方专属双深度提示词接入：
+    - 「已读未回」：严禁卑微催促，从历史记录去重并抛出深水区技术攻坚与业务赋能二度底牌（80-120字）；
+    - 「未读唤醒」：提炼高密度通知抓手，生成岗位价值补充型与自然轻量触达型极速话术（60-100字）；
+  - 专属卡片标题与独立复制按钮：根据不同场景定制专属标题（技术攻坚深化型/业务成效赋能型/岗位价值补充型/自然轻量触达型），复制目标清晰无歧义。
 - **v1.2.2**：
   - 顶栏布局重构：左上角新增明确的「✕ 关闭」触控药丸，居中标题，支持双角便捷关闭；
   - 岗位 JD 卡片防挤压重构：消除「已合并长JD」与「识别与校对」相互挤压折行的 Bug，加入弹性间距，排版舒展；

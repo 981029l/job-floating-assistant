@@ -23,6 +23,79 @@ class JobAccessibilityService : AccessibilityService() {
         private var lastWindowClassName: String = ""
         private var isMergedLongJd: Boolean = false
 
+        data class SceneInspection(
+            val mode: GenerationMode,
+            val jdText: String,
+            val chatHistory: String
+        )
+
+        fun inspectCurrentScene(): SceneInspection {
+            val service = instance
+            if (service == null) {
+                return SceneInspection(GenerationMode.FIRST_ICEBREAK, cachedAppScreenText, "")
+            }
+
+            var hasChatInput = false
+            var hasReadStatus = false
+            var hasUnreadOrDelivered = false
+            val allTextLines = mutableListOf<String>()
+
+            fun scan(node: AccessibilityNodeInfo?) {
+                if (node == null) return
+                val cls = node.className?.toString() ?: ""
+                if (cls.contains("EditText")) {
+                    hasChatInput = true
+                }
+
+                val txt = node.text?.toString()?.trim() ?: ""
+                if (txt.isNotBlank()) {
+                    if (txt == "已读" || txt.contains("已读")) {
+                        hasReadStatus = true
+                    }
+                    if (txt == "送达" || txt == "已送达" || txt == "未读" || txt.contains("送达")) {
+                        hasUnreadOrDelivered = true
+                    }
+                    if (txt.length >= 6 && !IGNORED_FIXED_TEXTS.contains(txt)) {
+                        allTextLines.add(txt)
+                    }
+                }
+
+                for (i in 0 until node.childCount) {
+                    try {
+                        scan(node.getChild(i))
+                    } catch (_: Exception) {}
+                }
+            }
+
+            val windows = try { service.windows } catch (_: Exception) { null }
+            if (!windows.isNullOrEmpty()) {
+                for (w in windows) {
+                    if (w.type == AccessibilityWindowInfo.TYPE_APPLICATION) {
+                        w.root?.let { scan(it) }
+                    }
+                }
+            }
+            if (allTextLines.isEmpty()) {
+                val root = try { service.rootInActiveWindow } catch (_: Exception) { null }
+                if (root != null) scan(root)
+            }
+
+            if (hasChatInput || hasReadStatus || hasUnreadOrDelivered) {
+                val mode = when {
+                    hasReadStatus -> GenerationMode.READ_UNREPLIED
+                    hasUnreadOrDelivered -> GenerationMode.UNREAD_NUDGE
+                    else -> GenerationMode.READ_UNREPLIED
+                }
+                val historyCandidates = allTextLines.filter { it.length >= 12 && !it.startsWith("预览") }
+                val chatHistory = historyCandidates.takeLast(2).joinToString("\n")
+                val jdText = if (lastExtractedJd.length >= 20) lastExtractedJd else allTextLines.joinToString("\n").take(300)
+                return SceneInspection(mode, jdText, chatHistory)
+            } else {
+                val jd = captureCurrentScreenText()
+                return SceneInspection(GenerationMode.FIRST_ICEBREAK, jd, "")
+            }
+        }
+
         fun isLongJdMerged(): Boolean = isMergedLongJd
 
         fun clearAccumulation() {

@@ -218,7 +218,9 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
 
     suspend fun generateGreetings(
         context: Context,
-        jdText: String
+        jdText: String,
+        mode: GenerationMode = GenerationMode.FIRST_ICEBREAK,
+        chatHistory: String = ""
     ): Result<List<GreetingOption>> = withContext(Dispatchers.IO) {
         try {
             val apiKey = StorageManager.getApiKey(context)
@@ -229,26 +231,29 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
             val baseUrl = StorageManager.getBaseUrl(context).trimEnd('/')
             val endpoint = "$baseUrl/chat/completions"
             val model = StorageManager.getModel(context)
-            val systemPrompt = StorageManager.getCustomPrompt(context)
+            val basePrompt = StorageManager.getPromptForMode(context, mode)
             val resume = StorageManager.getResume(context)
 
-            val userContent = """
-【目标岗位 JD 信息】：
-$jdText
-
-【候选人简历】：
-$resume
-""".trimIndent()
-
             val messagesArray = JSONArray().apply {
-                put(JSONObject().apply {
-                    put("role", "system")
-                    put("content", systemPrompt)
-                })
-                put(JSONObject().apply {
-                    put("role", "user")
-                    put("content", userContent)
-                })
+                if (basePrompt.contains("{{jdText}}")) {
+                    val promptContent = basePrompt
+                        .replace("{{jdText}}", jdText.ifBlank { "（暂未识别到详细岗位JD，请基于通用岗位匹配度生成）" })
+                        .replace("{{resume}}", resume.ifBlank { "（未录入完整简历）" })
+                        .replace("{{chatHistory}}", chatHistory.ifBlank { "（无历史打招呼记录，此前仅发起过初步破冰）" })
+                    put(JSONObject().apply {
+                        put("role", "user")
+                        put("content", promptContent)
+                    })
+                } else {
+                    put(JSONObject().apply {
+                        put("role", "system")
+                        put("content", basePrompt)
+                    })
+                    put(JSONObject().apply {
+                        put("role", "user")
+                        put("content", "【目标岗位 JD 信息】：\n$jdText\n\n【候选人简历】：\n$resume")
+                    })
+                }
             }
 
             val requestBodyJson = JSONObject().apply {
@@ -282,18 +287,24 @@ $resume
                 .getString("content")
                 .trim()
 
-            val options = parseOptions(content)
+            val options = parseOptions(content, mode)
             Result.success(options)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    private fun parseOptions(raw: String): List<GreetingOption> {
+    private fun parseOptions(raw: String, mode: GenerationMode = GenerationMode.FIRST_ICEBREAK): List<GreetingOption> {
         val list = mutableListOf<GreetingOption>()
         var cleaned = raw.trim()
         if (cleaned.startsWith("```") && cleaned.endsWith("```")) {
             cleaned = cleaned.replace(Regex("^```[a-zA-Z]*\\n?"), "").replace(Regex("\\n?```$"), "").trim()
+        }
+
+        val (title1, title2) = when (mode) {
+            GenerationMode.FIRST_ICEBREAK -> Pair("技术硬核型", "全面匹配型")
+            GenerationMode.READ_UNREPLIED -> Pair("技术攻坚深化型", "业务成效赋能型")
+            GenerationMode.UNREAD_NUDGE -> Pair("岗位价值补充型", "自然轻量触达型")
         }
 
         // 1. 优先按完整多行标题进行正则切分（容错各种标记如 ===风格一===、### 风格一、[风格一] 等）
@@ -306,8 +317,8 @@ $resume
         if (m1 != null && m2 != null && m1.range.first < m2.range.first) {
             val part1 = cleaned.substring(m1.range.last + 1, m2.range.first).trim()
             val part2 = cleaned.substring(m2.range.last + 1).trim()
-            if (part1.isNotBlank()) list.add(GreetingOption("技术硬核型", part1))
-            if (part2.isNotBlank()) list.add(GreetingOption("全面匹配型", part2))
+            if (part1.isNotBlank()) list.add(GreetingOption(title1, part1))
+            if (part2.isNotBlank()) list.add(GreetingOption(title2, part2))
             return list
         }
 
@@ -320,16 +331,16 @@ $resume
         if (im1 != null && im2 != null && im1.range.first < im2.range.first) {
             val part1 = cleaned.substring(im1.range.last + 1, im2.range.first).trim()
             val part2 = cleaned.substring(im2.range.last + 1).trim()
-            if (part1.isNotBlank()) list.add(GreetingOption("技术硬核型", part1))
-            if (part2.isNotBlank()) list.add(GreetingOption("全面匹配型", part2))
+            if (part1.isNotBlank()) list.add(GreetingOption(title1, part1))
+            if (part2.isNotBlank()) list.add(GreetingOption(title2, part2))
             return list
         }
 
         // 3. 兜底策略：若大模型以双换行分段输出了两段具有一定长度的候选内容
-        val paragraphs = cleaned.split("\n\n").map { it.trim() }.filter { it.length > 25 }
+        val paragraphs = cleaned.split("\\n\\n").map { it.trim() }.filter { it.length > 25 }
         if (paragraphs.size >= 2) {
-            list.add(GreetingOption("技术硬核型", paragraphs[0]))
-            list.add(GreetingOption("全面匹配型", paragraphs[1]))
+            list.add(GreetingOption(title1, paragraphs[0]))
+            list.add(GreetingOption(title2, paragraphs[1]))
             return list
         }
 

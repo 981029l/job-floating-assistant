@@ -185,6 +185,11 @@ class FloatingService : Service() {
             dismissDialog()
         }
 
+        val scene = JobAccessibilityService.inspectCurrentScene()
+        var currentMode = scene.mode
+        var currentChatHistory = scene.chatHistory
+        var currentJd = if (initialJd.length >= 20) initialJd else if (scene.jdText.length >= 20) scene.jdText else initialJd
+
         val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         } else {
@@ -264,6 +269,45 @@ class FloatingService : Service() {
         headerLayout.addView(titleView)
         headerLayout.addView(closeBtnRight)
         rootLayout.addView(headerLayout)
+
+        // -------------------------------------------------------------
+        // 场景模式切换 Segmented Tab Bar (首次破冰 / 已读未回 / 未读唤醒)
+        // -------------------------------------------------------------
+        val tabContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, (6 * density).toInt(), 0, (2 * density).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = (6 * density).toInt()
+            }
+        }
+
+        val tabButtons = mutableListOf<TextView>()
+        val modes = listOf(
+            GenerationMode.FIRST_ICEBREAK,
+            GenerationMode.READ_UNREPLIED,
+            GenerationMode.UNREAD_NUDGE
+        )
+
+        fun updateTabStyles() {
+            modes.forEachIndexed { index, m ->
+                val btn = tabButtons.getOrNull(index) ?: return@forEachIndexed
+                val isSelected = m == currentMode
+                btn.setTextColor(if (isSelected) Color.parseColor("#4338CA") else Color.parseColor("#64748B"))
+                btn.paint.isFakeBoldText = isSelected
+                btn.background = GradientDrawable().apply {
+                    setColor(if (isSelected) Color.parseColor("#EEF2FF") else Color.parseColor("#F8FAFC"))
+                    cornerRadius = 8 * density
+                    setStroke(
+                        if (isSelected) (1.5f * density).toInt() else (1 * density).toInt(),
+                        if (isSelected) Color.parseColor("#818CF8") else Color.parseColor("#E2E8F0")
+                    )
+                }
+            }
+        }
 
         // -------------------------------------------------------------
         // 岗位 JD 识别与校对卡片 (支持查看已识别文字、手动编辑、剪贴板粘贴与重新生成)
@@ -533,6 +577,31 @@ class FloatingService : Service() {
         toggleBtn.setOnClickListener { toggleAction() }
         previewSnippet.setOnClickListener { toggleAction() }
 
+        // 组装 Tab 按钮点击事件
+        modes.forEachIndexed { index, m ->
+            val tabBtn = TextView(this).apply {
+                text = "${m.tabTitle} · ${m.badge}"
+                textSize = 11.5f
+                gravity = Gravity.CENTER
+                setPadding(0, (7 * density).toInt(), 0, (7 * density).toInt())
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    if (index > 0) leftMargin = (5 * density).toInt()
+                }
+                setOnClickListener {
+                    if (currentMode != m) {
+                        currentMode = m
+                        updateTabStyles()
+                        Toast.makeText(this@FloatingService, "切换模式: ${m.tabTitle} (${m.badge})", Toast.LENGTH_SHORT).show()
+                        triggerAiGeneration(contentContainer, currentJd, currentMode, currentChatHistory)
+                    }
+                }
+            }
+            tabButtons.add(tabBtn)
+            tabContainer.addView(tabBtn)
+        }
+        updateTabStyles()
+        rootLayout.addView(tabContainer)
+
         // 滚动内容容器（放置 AI 生成的话术卡片）
         val scrollView = ScrollView(this).apply {
             layoutParams = LinearLayout.LayoutParams(
@@ -562,8 +631,9 @@ class FloatingService : Service() {
             previewSnippet.text = "预览: " + customJd.replace("\n", " ")
             toggleBtn.text = "校对/修改"
 
+            currentJd = customJd
             Toast.makeText(this@FloatingService, "已应用最新 JD，正在为您生成匹配话术...", Toast.LENGTH_SHORT).show()
-            triggerAiGeneration(contentContainer, customJd)
+            triggerAiGeneration(contentContainer, customJd, currentMode, currentChatHistory)
         }
 
         // 底部提示栏
@@ -584,8 +654,8 @@ class FloatingService : Service() {
             return
         }
 
-        if (initialJd.length >= 20) {
-            triggerAiGeneration(contentContainer, initialJd)
+        if (currentJd.length >= 15 || currentMode != GenerationMode.FIRST_ICEBREAK) {
+            triggerAiGeneration(contentContainer, currentJd, currentMode, currentChatHistory)
         } else {
             // 如果初次识别没有达到 20 字，在下方展示友好引导
             contentContainer.removeAllViews()
@@ -601,7 +671,12 @@ class FloatingService : Service() {
         }
     }
 
-    private fun triggerAiGeneration(container: LinearLayout, jdText: String) {
+    private fun triggerAiGeneration(
+        container: LinearLayout,
+        jdText: String,
+        mode: GenerationMode = GenerationMode.FIRST_ICEBREAK,
+        chatHistory: String = ""
+    ) {
         currentGenerationJob?.cancel()
         container.removeAllViews()
         val density = resources.displayMetrics.density
@@ -610,8 +685,13 @@ class FloatingService : Service() {
             isIndeterminate = true
         }
         val currentModel = StorageManager.getModel(this)
+        val modeActionDesc = when (mode) {
+            GenerationMode.FIRST_ICEBREAK -> "深度解析岗位要求与简历匹配点"
+            GenerationMode.READ_UNREPLIED -> "挖掘深水攻坚亮点，生成已读二度跟进"
+            GenerationMode.UNREAD_NUDGE -> "提炼高密度通知抓手，生成未读触达"
+        }
         val loadingText = TextView(this).apply {
-            text = "正在深度解析岗位要求与简历匹配点...\n（调用 $currentModel 极速生成中）"
+            text = "正在${modeActionDesc}...\n（调用 $currentModel 极速生成中）"
             setTextColor(Color.parseColor("#334155"))
             textSize = 13f
             gravity = Gravity.CENTER
@@ -622,12 +702,12 @@ class FloatingService : Service() {
         container.addView(loadingText)
 
         currentGenerationJob = serviceScope.launch {
-            val result = DeepSeekClient.generateGreetings(this@FloatingService, jdText)
+            val result = DeepSeekClient.generateGreetings(this@FloatingService, jdText, mode, chatHistory)
             withContext(Dispatchers.Main) {
                 container.removeAllViews()
                 result.onSuccess { options ->
                     options.forEach { option ->
-                        val card = createOptionCard(option)
+                        val card = createOptionCard(option, mode)
                         container.addView(card)
                     }
                 }.onFailure { err ->
@@ -661,7 +741,7 @@ class FloatingService : Service() {
                             topMargin = (10 * density).toInt()
                         }
                         setOnClickListener {
-                            triggerAiGeneration(container, jdText)
+                            triggerAiGeneration(container, jdText, mode, chatHistory)
                         }
                     }
                     errorCard.addView(errorView)
@@ -672,7 +752,7 @@ class FloatingService : Service() {
         }
     }
 
-    private fun createOptionCard(option: GreetingOption): View {
+    private fun createOptionCard(option: GreetingOption, mode: GenerationMode = GenerationMode.FIRST_ICEBREAK): View {
         val density = resources.displayMetrics.density
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -696,10 +776,14 @@ class FloatingService : Service() {
             gravity = Gravity.CENTER_VERTICAL
         }
 
-        val isHardcore = option.title.contains("硬核") || option.title.contains("技术")
+        val isHardcore = option.title.contains("硬核") || option.title.contains("攻坚") || option.title.contains("价值")
         val tagBg = if (isHardcore) Color.parseColor("#EFF6FF") else Color.parseColor("#ECFDF5")
         val tagColor = if (isHardcore) Color.parseColor("#1677FF") else Color.parseColor("#059669")
-        val badgeText = if (isHardcore) "技术攻坚" else "全面交流"
+        val badgeText = when (mode) {
+            GenerationMode.FIRST_ICEBREAK -> if (isHardcore) "技术攻坚" else "全面交流"
+            GenerationMode.READ_UNREPLIED -> if (isHardcore) "攻坚深化" else "成效赋能"
+            GenerationMode.UNREAD_NUDGE -> if (isHardcore) "价值补充" else "轻量触达"
+        }
 
         val tagView = TextView(this).apply {
             text = "【${option.title}】"
