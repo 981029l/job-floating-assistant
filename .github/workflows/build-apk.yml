@@ -7,6 +7,9 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -35,9 +38,26 @@ jobs:
       - name: 执行编译打包 (assembleDebug)
         run: gradle assembleDebug --stacktrace
 
-      - name: 上传构建完成的 APK 安装包
+      - name: 重命名 APK 文件
+        run: |
+          mkdir -p release_apk
+          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.0.0-debug.apk
+
+      - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
         with:
           name: JobAssistant-Debug-APK
-          path: app/build/outputs/apk/debug/*.apk
+          path: release_apk/*.apk
           retention-days: 30
+
+      - name: 自动发布到 GitHub Releases
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v1.0.0
+          name: "AI求职悬浮助手 v1.0.0"
+          body: "🎉 AI 求职悬浮助手安装包编译成功！支持屏幕 JD 自动提取与 DeepSeek 定制招呼语。"
+          files: release_apk/JobAssistant-v1.0.0-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
