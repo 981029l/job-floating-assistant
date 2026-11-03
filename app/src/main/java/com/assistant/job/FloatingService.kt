@@ -21,6 +21,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -109,18 +110,16 @@ class FloatingService : Service() {
             y = (resources.displayMetrics.heightPixels * 0.35).toInt()
         }
 
-        val ballView = TextView(this).apply {
-            text = "AI\n招呼"
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            textSize = 13f
-            paint.isFakeBoldText = true
+        val ballView = ImageView(this).apply {
+            setImageResource(R.mipmap.ic_launcher_round)
+            scaleType = ImageView.ScaleType.CENTER_CROP
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#1677FF"))
-                setStroke((3 * density).toInt(), Color.WHITE)
+                setColor(Color.WHITE)
+                setStroke((2.5f * density).toInt(), Color.parseColor("#E0E0E0"))
             }
-            elevation = 20f
+            elevation = 24f
+            clipToOutline = true
         }
 
         var initialX = 0
