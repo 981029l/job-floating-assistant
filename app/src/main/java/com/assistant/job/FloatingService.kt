@@ -222,7 +222,7 @@ class FloatingService : Service() {
             gravity = Gravity.CENTER_VERTICAL
         }
         val titleView = TextView(this).apply {
-            text = "🤖 AI 定制招呼语"
+            text = "AI 定制招呼语"
             textSize = 17f
             setTextColor(Color.parseColor("#1F1F1F"))
             paint.isFakeBoldText = true
@@ -275,7 +275,7 @@ class FloatingService : Service() {
         val density = resources.displayMetrics.density
 
         val tipText = TextView(this).apply {
-            text = "⚠️ 未能通过无障碍自动读到屏幕 JD。\n您可直接点击下方【粘贴剪贴板文字】快速生成："
+            text = "提示：未能通过无障碍自动读到屏幕文字。\n您可直接点击下方【粘贴剪贴板】快速生成："
             setTextColor(Color.parseColor("#D48806"))
             textSize = 13f
             setPadding(0, 0, 0, (8 * density).toInt())
@@ -301,7 +301,7 @@ class FloatingService : Service() {
         }
 
         val pasteBtn = Button(this).apply {
-            text = "📋 粘贴剪贴板"
+            text = "粘贴剪贴板"
             textSize = 12f
             setTextColor(Color.parseColor("#1677FF"))
             background = GradientDrawable().apply {
@@ -324,7 +324,7 @@ class FloatingService : Service() {
         }
 
         val generateBtn = Button(this).apply {
-            text = "🚀 立即生成"
+            text = "立即生成"
             textSize = 13f
             setTextColor(Color.WHITE)
             background = GradientDrawable().apply {
@@ -426,7 +426,7 @@ class FloatingService : Service() {
         }
 
         val copyBtn = Button(this).apply {
-            text = "📋 复制此话术并关闭"
+            text = "复制此话术并关闭"
             setTextColor(Color.WHITE)
             textSize = 13f
             background = GradientDrawable().apply {

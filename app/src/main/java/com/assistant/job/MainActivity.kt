@@ -13,8 +13,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +20,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Article
+import androidx.compose.material.icons.rounded.Cancel
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Psychology
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -134,25 +145,37 @@ fun MainScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // App 标题
+        // App 标题卡片 (采用 Material 3 原生矢量图标)
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF1677FF)),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text(
-                    text = "🤖 AI 求职悬浮助手",
-                    color = Color.White,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
+            Row(
+                modifier = Modifier.padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Psychology,
+                    contentDescription = "AI Assistant Icon",
+                    tint = Color.White,
+                    modifier = Modifier.size(38.dp)
                 )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "屏幕自动读屏提取 JD · 一键获取模型 · 支持上传 PDF 简历",
-                    color = Color.White.copy(alpha = 0.9f),
-                    fontSize = 13.sp
-                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Column {
+                    Text(
+                        text = "AI 求职悬浮助手",
+                        color = Color.White,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "屏幕自动读屏提取 JD · 一键获取模型 · 支持上传 PDF 简历",
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
 
@@ -163,12 +186,21 @@ fun MainScreen() {
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = "📌 权限与悬浮开关",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1F1F1F)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Rounded.Security,
+                        contentDescription = "Permissions",
+                        tint = Color(0xFF1677FF),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "权限与悬浮开关",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1F1F1F)
+                    )
+                }
 
                 // 悬浮窗权限
                 Row(
@@ -178,11 +210,23 @@ fun MainScreen() {
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("1. 悬浮窗权限", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                        Text(
-                            if (overlayGranted) "已开启 ✅ (可正常弹出悬浮球)" else "未开启 ❌ (点击右侧去授权)",
-                            fontSize = 12.sp,
-                            color = if (overlayGranted) Color(0xFF52C41A) else Color(0xFFFF4D4F)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (overlayGranted) Icons.Rounded.CheckCircle else Icons.Rounded.Cancel,
+                                contentDescription = if (overlayGranted) "Granted" else "Denied",
+                                tint = if (overlayGranted) Color(0xFF52C41A) else Color(0xFFFF4D4F),
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                if (overlayGranted) "已开启 (可正常弹出悬浮球)" else "未开启 (点击右侧去授权)",
+                                fontSize = 12.sp,
+                                color = if (overlayGranted) Color(0xFF52C41A) else Color(0xFFFF4D4F)
+                            )
+                        }
                     }
                     Button(
                         onClick = { requestOverlayPermission(context) },
@@ -208,11 +252,23 @@ fun MainScreen() {
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("2. 无障碍读屏服务", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                        Text(
-                            if (accessibilityGranted) "已开启 ✅ (可在 BOSS 直聘秒级读屏)" else "未开启 ❌ (进入无障碍开启'求职助手')",
-                            fontSize = 12.sp,
-                            color = if (accessibilityGranted) Color(0xFF52C41A) else Color(0xFFFF4D4F)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (accessibilityGranted) Icons.Rounded.CheckCircle else Icons.Rounded.Cancel,
+                                contentDescription = if (accessibilityGranted) "Granted" else "Denied",
+                                tint = if (accessibilityGranted) Color(0xFF52C41A) else Color(0xFFFF4D4F),
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                if (accessibilityGranted) "已开启 (可在 BOSS 直聘秒级读屏)" else "未开启 (进入无障碍开启'求职助手')",
+                                fontSize = 12.sp,
+                                color = if (accessibilityGranted) Color(0xFF52C41A) else Color(0xFFFF4D4F)
+                            )
+                        }
                     }
                     Button(
                         onClick = { requestAccessibilityPermission(context) },
@@ -230,7 +286,7 @@ fun MainScreen() {
 
                 HorizontalDivider()
 
-                // 启动 / 关闭悬浮球
+                // 启动 / 关闭悬浮球按钮
                 Button(
                     onClick = {
                         if (!checkOverlayPermission(context)) {
@@ -262,8 +318,14 @@ fun MainScreen() {
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
+                    Icon(
+                        imageVector = if (floatingServiceRunning) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
+                        contentDescription = "Toggle Service",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        if (floatingServiceRunning) "⏹ 关闭屏幕悬浮球" else "▶ 开启屏幕悬浮球",
+                        if (floatingServiceRunning) "关闭屏幕悬浮球" else "开启屏幕悬浮球",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -278,12 +340,21 @@ fun MainScreen() {
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = "⚙️ 大模型 API 设置",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1F1F1F)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Rounded.Settings,
+                        contentDescription = "Settings",
+                        tint = Color(0xFF1677FF),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "大模型 API 设置",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1F1F1F)
+                    )
+                }
 
                 OutlinedTextField(
                     value = apiKey,
@@ -342,12 +413,18 @@ fun MainScreen() {
                                 }
                             }
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1.1f),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF52C41A)),
                         shape = RoundedCornerShape(8.dp)
                     ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Refresh,
+                            contentDescription = "Refresh Models",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            if (isFetchingModels) "拉取中..." else "🔄 获取模型",
+                            if (isFetchingModels) "拉取中..." else "获取模型",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -386,12 +463,21 @@ fun MainScreen() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "📝 我的简历内容",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1F1F1F)
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Rounded.Article,
+                            contentDescription = "Resume",
+                            tint = Color(0xFF1677FF),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "我的简历内容",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1F1F1F)
+                        )
+                    }
                     TextButton(onClick = {
                         resumeContent = StorageManager.DEFAULT_RESUME
                         StorageManager.saveResume(context, StorageManager.DEFAULT_RESUME)
@@ -410,8 +496,14 @@ fun MainScreen() {
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF722ED1)),
                     shape = RoundedCornerShape(10.dp)
                 ) {
+                    Icon(
+                        imageVector = Icons.Rounded.UploadFile,
+                        contentDescription = "Upload Resume",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        if (isParsingResume) "正在解析简历中..." else "📁 选择并上传简历文件 (PDF / Word / TXT)",
+                        if (isParsingResume) "正在解析简历中..." else "选择并上传简历文件 (PDF / Word / TXT)",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -444,15 +536,24 @@ fun MainScreen() {
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "💡 操作技巧：",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = Color(0xFFD48806)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Rounded.Lightbulb,
+                        contentDescription = "Tips",
+                        tint = Color(0xFFD48806),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "操作技巧：",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color(0xFFD48806)
+                    )
+                }
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "1. 点击【开启屏幕悬浮球】，屏幕左侧会出现【AI招呼】蓝色悬浮球。\n" +
+                    text = "1. 点击【开启屏幕悬浮球】，屏幕左侧会出现蓝色悬浮球。\n" +
                             "2. 打开 BOSS直聘 进入任意岗位详情页，点击悬浮球即可自动读屏生成。\n" +
                             "3. 若某机型限制读屏，点击悬浮球后可直接【粘贴剪贴板文字】生成，双重保障！",
                     fontSize = 12.sp,
@@ -486,7 +587,12 @@ fun MainScreen() {
                         ) {
                             Text(m, fontSize = 14.sp, color = if (m == modelName) Color(0xFF1677FF) else Color.DarkGray)
                             if (m == modelName) {
-                                Text("✓", color = Color(0xFF1677FF), fontWeight = FontWeight.Bold)
+                                Icon(
+                                    imageVector = Icons.Rounded.Check,
+                                    contentDescription = "Selected",
+                                    tint = Color(0xFF1677FF),
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
                         }
                         HorizontalDivider()
