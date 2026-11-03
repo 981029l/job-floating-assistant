@@ -291,13 +291,20 @@ $resume
 
     private fun parseOptions(raw: String): List<GreetingOption> {
         val list = mutableListOf<GreetingOption>()
-        if (raw.contains("===方案一===") && raw.contains("===方案二===")) {
+        val hasStyle = raw.contains("===风格一===") && raw.contains("===风格二===")
+        val hasPlan = raw.contains("===方案一===") && raw.contains("===方案二===")
+        if (hasStyle) {
+            val part1 = raw.substringAfter("===风格一===").substringBefore("===风格二===").trim()
+            val part2 = raw.substringAfter("===风格二===").trim()
+            list.add(GreetingOption("技术硬核型", part1))
+            list.add(GreetingOption("全面匹配型", part2))
+        } else if (hasPlan) {
             val part1 = raw.substringAfter("===方案一===").substringBefore("===方案二===").trim()
             val part2 = raw.substringAfter("===方案二===").trim()
-            list.add(GreetingOption("硬核技术型", part1))
-            list.add(GreetingOption("全面契合型", part2))
+            list.add(GreetingOption("技术硬核型", part1))
+            list.add(GreetingOption("全面匹配型", part2))
         } else {
-            list.add(GreetingOption("精选破冰语", raw))
+            list.add(GreetingOption("精选破冰语", raw.trim()))
         }
         return list
     }

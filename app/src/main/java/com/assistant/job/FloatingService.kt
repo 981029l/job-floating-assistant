@@ -676,7 +676,7 @@ class FloatingService : Service() {
         val isHardcore = option.title.contains("硬核") || option.title.contains("技术")
         val tagBg = if (isHardcore) Color.parseColor("#EFF6FF") else Color.parseColor("#ECFDF5")
         val tagColor = if (isHardcore) Color.parseColor("#1677FF") else Color.parseColor("#059669")
-        val badgeText = if (isHardcore) "匹配度 96%" else "高回复率"
+        val badgeText = if (isHardcore) "技术攻坚" else "全面交流"
 
         val tagView = TextView(this).apply {
             text = "【${option.title}】"
