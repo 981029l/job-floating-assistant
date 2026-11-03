@@ -583,7 +583,21 @@ class FloatingService : Service() {
         toggleBtn.setOnClickListener { toggleAction() }
         previewSnippet.setOnClickListener { toggleAction() }
 
-        // 组装 Tab 按钮点击事件 (4档场景切换)
+        // 滚动内容容器（放置 AI 生成的话术卡片，需在 Tab 点击事件前声明以便闭包捕获）
+        val scrollView = ScrollView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        }
+        val contentContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, (6 * density).toInt(), 0, (6 * density).toInt())
+        }
+        scrollView.addView(contentContainer)
+
+        // 组装 Tab 按钮点击事件 (5档场景切换)
         modes.forEachIndexed { index, m ->
             val tabBtn = TextView(this).apply {
                 text = m.tabTitle
@@ -607,20 +621,6 @@ class FloatingService : Service() {
         }
         updateTabStyles()
         rootLayout.addView(tabContainer)
-
-        // 滚动内容容器（放置 AI 生成的话术卡片）
-        val scrollView = ScrollView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-            )
-        }
-        val contentContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, (6 * density).toInt(), 0, (6 * density).toInt())
-        }
-        scrollView.addView(contentContainer)
         rootLayout.addView(scrollView)
 
         // 绑定重新生成按钮点击事件
