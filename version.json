@@ -1,6 +1,6 @@
 {
-  "versionCode": 31,
-  "versionName": "1.3.1",
-  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.3.1/JobAssistant-v1.3.1.apk",
-  "releaseNotes": "1. 彻底解决检查更新 403 频控问题：接入 jsDelivr 全球高速 CDN 与网页 302 重定向探针，更新检测零延迟、零频控；\n2. 职位特征与 JD 记忆池：在 BOSS 聊天页自动秒级关联命中对应完整岗位职责；\n3. 模拟面试考点押题专区：主应用新增 4 维高频考点预测与 STAR 回答策略；\n4. 正式版 APK 纯净发布，彻底去除 -debug 后缀。"
+  "versionCode": 32,
+  "versionName": "1.3.2",
+  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.3.2/JobAssistant-v1.3.2.apk",
+  "releaseNotes": "1. 全链路沟通礼仪与开场规范重磅升级：统一注入 8 维职场即时沟通规范，首轮主动开聊自然带「您好」礼貌开场，消除冰冷机器感；\n2. 智能区分单轮与多轮：多轮对话不重复机械「您好」，回答 HR 具体问题直给干脆；\n3. 杜绝书面化公文腔：全面摒弃「贵司」「贵公司」等生硬词汇，更像真实高水平求职者；\n4. 纯净正式版发布，继承统一签名一键无缝覆盖升级。"
 }

@@ -40,6 +40,18 @@ object StorageManager {
     const val DEFAULT_AI_SUMMARY = ""
     const val DEFAULT_CUSTOM_TAGS = ""
 
+    const val COMMON_COMMUNICATION_ETIQUETTE_RULES = """
+【沟通礼仪与开场规范（所有场景必须严格遵守）】
+1. 第一次主动联系招聘人员时，原则上使用「您好」作为礼貌开场。
+2. 如果双方已经有多轮聊天，不要每条消息都重复使用「您好」，应自然承接上一轮对话。
+3. 如果是回复 HR 的具体问题，优先直接回答问题，不要机械添加称呼。
+4. 如果是感谢、确认、简历发送、面试邀约等场景，根据上下文自然使用「好的」「您好」「感谢您」「辛苦您了」等表达。
+5. 优先使用自然、礼貌的职场沟通语气，不要过度使用「贵司」「贵公司」「尊敬的招聘负责人」等书面化表达。
+6. 不使用「亲」「老板」「大佬」等不够正式或过于随意的称呼。
+7. 每条话术都要像真实求职者在招聘平台聊天，而不是正式邮件或自我介绍文章。
+8. 不要为了满足开场规范而强行添加问候语，避免重复、冗余和机械化表达。
+"""
+
     val DEFAULT_SYSTEM_PROMPT = """
 你是一位顶尖的技术招聘顾问、资深技术专家和候选人竞争力分析专家，擅长从招聘 JD 与候选人简历中快速识别技术匹配点，并生成具有针对性、专业性和沟通吸引力的求职破冰话术。
 
@@ -102,7 +114,7 @@ object StorageManager {
 - 两段话术必须具有明显不同的表达策略，不能简单重复。
 - 每段开头应尽可能突出最有价值的匹配亮点。
 - 避免大段技术名词堆砌。
-- 避免您好、你好等无意义开场。
+- 首次主动破冰统一使用「您好」礼貌开场，随后立刻切入个人核心优势与岗位契合点，严禁大段冗长客套。
 - 不要使用空洞的自我评价。
 - 适合 BOSS直聘、猎聘等招聘平台直接复制发送。
 
@@ -562,7 +574,7 @@ HR 已经收到候选人简历，并明确表示将简历转交给技术人员�
 """.trimIndent()
 
     fun getPromptForMode(context: Context, mode: GenerationMode): String {
-        return when (mode) {
+        val basePrompt = when (mode) {
             GenerationMode.FIRST_ICEBREAK -> getCustomPrompt(context)
             GenerationMode.READ_UNREPLIED -> PROMPT_READ_UNREPLIED
             GenerationMode.UNREAD_NUDGE -> PROMPT_UNREAD_NUDGE
@@ -570,6 +582,7 @@ HR 已经收到候选人简历，并明确表示将简历转交给技术人员�
             GenerationMode.RESUME_FOLLOW_UP -> PROMPT_RESUME_FOLLOW_UP
             GenerationMode.TECH_EVALUATION -> PROMPT_TECH_EVALUATION
         }
+        return basePrompt + "\n\n" + COMMON_COMMUNICATION_ETIQUETTE_RULES
     }
 
     fun getCustomPrompt(context: Context): String {
