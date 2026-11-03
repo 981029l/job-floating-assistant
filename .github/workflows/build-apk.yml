@@ -35,18 +35,18 @@ jobs:
             chmod +x gradlew
           fi
 
-      - name: 执行编译打包 (assembleDebug)
-        run: gradle assembleDebug --stacktrace
+      - name: 执行编译打包 (assembleRelease)
+        run: gradle assembleRelease --stacktrace
 
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.2.8-debug.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.2.9.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
         with:
-          name: JobAssistant-Debug-APK
+          name: JobAssistant-Release-APK
           path: release_apk/*.apk
           retention-days: 30
 
@@ -54,23 +54,19 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.2.8
-          name: "AI求职悬浮助手 v1.2.8 (悬浮窗顶栏精简/右上角单点关闭/双风格鲁棒解析)"
+          tag_name: v1.2.9
+          name: "AI求职悬浮助手 v1.2.9 (新增岗位全真模拟面试押题专区/纯净正式版APK)"
           body: |
-            AI 求职悬浮助手 v1.1.7 全盘去伪存真与体验升级：
-            1. 彻底拔除所有虚假数据：
-               - 设置页连通性卡片真实联动：未填写 API Key 时明确显示「离线状态 · 0 个可用模型」，严禁无 Key 伪造「连通性极佳 · Ping 88ms」；填写后真实发起网络测速，显示实际延迟与真实拉取的模型数量；
-               - 悬浮主控看板去伪：今日识别为 0 次时，战绩指标真实显示「--% / -- s」，移除写死的虚假 100% 和 0.6s；
-               - 设置页模拟打招呼弹窗去伪：彻底移除写死的 3 条假前端话术，接入大模型真实在线推理生成。
-            2. 彻底整修「AI 精炼优势」卡片 UI 与功能：
-               - 视觉排版重构：消除背景色彩与边框冲突，对齐统一设计规范；
-               - 真实 AI 一键生成：新增「AI 一键从简历提炼」功能，真实调用大模型提炼个人核心亮点，拒绝假 AI；
-               - 编辑模式布局规范化：取消与保存按钮统一底置，交互自然流畅。
-            3. 顶部 Header 药丸排版防挤压与真实版本绑定：
-               - 彻底解决版本胶囊被挤压截断为「• P」的严重排版 Bug，真实绑定当前应用版本号 v1.1.7；
-            4. 继承持久化 debug.keystore 签名：
-               - 本次及后续所有版本均支持直接覆盖更新安装，数据完全保留。
-          files: release_apk/JobAssistant-v1.2.8-debug.apk
+            AI 求职悬浮助手 v1.2.9 全新重磅升级：
+            1. 全新上线【岗位针对性模拟面试 · 考点预测押题】（主应用独立 Tab 2）：
+               - 深度穿透 4 维考题矩阵：技术深水区原理、项目经历真实性深挖、架构场景设计、HR 与综合沟通；
+               - 智能关联：一键同步无障碍服务抓取的当前岗位真实 JD，自动结合候选人简历真实经历；
+               - 专业解析：每道题目附带【考官核心意图与考核陷阱】+【STAR 法则满分回答思路】+【大厂面试避坑红线】；
+               - 支持全考点分类筛选过滤与一键复制考题解析。
+            2. 正式安装包全面去除「-debug」后缀：
+               - 产物全面正规化，规范命名为 JobAssistant-v1.2.9.apk；
+               - 继承统一固化密钥签名，已安装的老板/用户可直接一键无缝覆盖更新，数据 100% 完整保留。
+          files: release_apk/JobAssistant-v1.2.9.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

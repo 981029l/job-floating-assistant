@@ -11,8 +11,8 @@ android {
         applicationId = "com.assistant.job"
         minSdk = 26
         targetSdk = 34
-        versionCode = 28
-        versionName = "1.2.8"
+        versionCode = 29
+        versionName = "1.2.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -35,6 +35,7 @@ android {
         }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

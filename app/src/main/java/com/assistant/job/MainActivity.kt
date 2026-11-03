@@ -269,6 +269,25 @@ fun MainScreen() {
                     onClick = { selectedTab = 2 },
                     icon = {
                         Icon(
+                            painter = painterResource(id = R.drawable.ic_lightbulb),
+                            contentDescription = "面试押题",
+                            modifier = Modifier.size(22.dp)
+                        )
+                    },
+                    label = { Text("面试押题", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Color(0xFF4F46E5),
+                        selectedTextColor = Color(0xFF4F46E5),
+                        indicatorColor = Color(0xFFEEF2FF),
+                        unselectedIconColor = Color(0xFF64748B),
+                        unselectedTextColor = Color(0xFF64748B)
+                    )
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    icon = {
+                        Icon(
                             painter = painterResource(id = R.drawable.ic_tune),
                             contentDescription = "AI设置",
                             modifier = Modifier.size(22.dp)
@@ -295,7 +314,7 @@ fun MainScreen() {
             // 顶部精致 Mascot 顶栏
             TopHeroHeader(
                 floatingServiceRunning = floatingServiceRunning,
-                onOpenSettings = { selectedTab = 2 }
+                onOpenSettings = { selectedTab = 3 }
             )
 
             // 各 Tab 视窗
@@ -381,7 +400,13 @@ fun MainScreen() {
                             Toast.makeText(context, "已清空简历内容", Toast.LENGTH_SHORT).show()
                         }
                     )
-                    2 -> SettingsTab(
+                    2 -> InterviewTab(
+                        context = context,
+                        modelName = modelName,
+                        onNavigateToProfile = { selectedTab = 1 },
+                        onNavigateToSettings = { selectedTab = 3 }
+                    )
+                    3 -> SettingsTab(
                         context = context,
                         scope = scope,
                         apiKey = apiKey,
@@ -3443,6 +3468,711 @@ fun UpdateDialog(
                             )
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+
+// =========================================================================
+// Tab 2: 岗位针对性模拟面试 · 考点预测押题 (遵循 Google Stitch 规范)
+// =========================================================================
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun InterviewTab(
+    context: Context,
+    modelName: String,
+    onNavigateToProfile: () -> Unit,
+    onNavigateToSettings: () -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val clipboardManager = LocalClipboardManager.current
+
+    // 默认尝试预填无障碍服务最新捕获的岗位 JD
+    var jdText by remember {
+        mutableStateOf(
+            if (JobAccessibilityService.lastExtractedJd.isNotBlank()) {
+                JobAccessibilityService.lastExtractedJd
+            } else {
+                JobAccessibilityService.cachedAppScreenText
+            }
+        )
+    }
+
+    var isGenerating by remember { mutableStateOf(false) }
+    var questions by remember { mutableStateOf<List<InterviewQuestion>>(emptyList()) }
+    var selectedCategoryFilter by remember { mutableStateOf("全部考点") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var expandedIndices by remember { mutableStateOf(setOf(1)) }
+
+    val fullResume = remember { StorageManager.getResume(context) }
+    val aiSummary = remember { StorageManager.getAiSummary(context) }
+    val targetRole = remember { StorageManager.getTargetRole(context) }
+
+    val hasResume = fullResume.isNotBlank() || aiSummary.isNotBlank()
+
+    val categories = remember(questions) {
+        val set = mutableSetOf("全部考点")
+        questions.forEach { set.add(it.category) }
+        set.toList()
+    }
+
+    val filteredQuestions = remember(questions, selectedCategoryFilter) {
+        if (selectedCategoryFilter == "全部考点") {
+            questions
+        } else {
+            questions.filter { it.category == selectedCategoryFilter }
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // 1. 顶部 Hero Banner 卡片
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFEEF2FF)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_lightbulb),
+                            contentDescription = "押题",
+                            tint = Color(0xFF4F46E5),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "岗位针对性模拟面试 · 考点押题",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A)
+                        )
+                        Text(
+                            text = "结合目标 JD 痛点与您的真实项目经历，智能预测连环追问",
+                            fontSize = 11.5.sp,
+                            color = Color(0xFF64748B)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFEFF6FF)
+                    ) {
+                        Text(
+                            text = "• 技术深水区原理",
+                            fontSize = 11.sp,
+                            color = Color(0xFF1D4ED8),
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFFAF5FF)
+                    ) {
+                        Text(
+                            text = "• 项目经历真实性深挖",
+                            fontSize = 11.sp,
+                            color = Color(0xFF7E22CE),
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFFFFBEB)
+                    ) {
+                        Text(
+                            text = "• 架构场景设计",
+                            fontSize = 11.sp,
+                            color = Color(0xFFB45309),
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFECFDF5)
+                    ) {
+                        Text(
+                            text = "• STAR 高分回答与避坑",
+                            fontSize = 11.sp,
+                            color = Color(0xFF047857),
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // 2. 目标岗位 JD 输入卡片
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "目标岗位 JD (要求与职责)",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1E293B)
+                    )
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(
+                            onClick = {
+                                val latest = if (JobAccessibilityService.lastExtractedJd.isNotBlank()) {
+                                    JobAccessibilityService.lastExtractedJd
+                                } else {
+                                    JobAccessibilityService.cachedAppScreenText
+                                }
+                                if (latest.isNotBlank()) {
+                                    jdText = latest
+                                    Toast.makeText(context, "已同步屏幕读取的岗位 JD (${latest.length} 字)", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "屏幕上暂无岗位文本，请在BOSS浏览后再次读取", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text("读取屏幕JD", fontSize = 11.5.sp, color = Color(0xFF4F46E5), fontWeight = FontWeight.SemiBold)
+                        }
+
+                        TextButton(
+                            onClick = {
+                                val clip = clipboardManager.getText()?.text
+                                if (!clip.isNullOrBlank()) {
+                                    jdText = clip
+                                    Toast.makeText(context, "已粘贴剪贴板内容", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "剪贴板为空", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text("粘贴", fontSize = 11.5.sp, color = Color(0xFF2563EB))
+                        }
+
+                        if (jdText.isNotBlank()) {
+                            TextButton(
+                                onClick = { jdText = "" },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text("清空", fontSize = 11.5.sp, color = Color(0xFF94A3B8))
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = jdText,
+                    onValueChange = { jdText = it },
+                    placeholder = {
+                        Text(
+                            text = "请在此输入或点击上方【读取屏幕JD】同步目标岗位的技术栈要求、业务场景与工作职责...",
+                            fontSize = 12.5.sp,
+                            color = Color(0xFF94A3B8)
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 100.dp, max = 180.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF4F46E5),
+                        unfocusedBorderColor = Color(0xFFCBD5E1),
+                        focusedContainerColor = Color(0xFFF8FAFC),
+                        unfocusedContainerColor = Color(0xFFF8FAFC)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val count = jdText.trim().length
+                    Text(
+                        text = if (count >= 20) "当前 JD 共 $count 字 (满足深度分析条件)" else if (count > 0) "当前仅 $count 字 (建议不少于 20 字以提高准度)" else "等待输入岗位要求",
+                        fontSize = 11.sp,
+                        color = if (count >= 20) Color(0xFF059669) else if (count > 0) Color(0xFFD97706) else Color(0xFF94A3B8),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        // 3. 候选人经历绑定状态卡片
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (hasResume) Color(0xFFF0FDF4) else Color(0xFFFFFBEB)
+            ),
+            border = BorderStroke(1.dp, if (hasResume) Color(0xFFBBF7D0) else Color(0xFFFDE68A))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(if (hasResume) Color(0xFFDCFCE7) else Color(0xFFFEF3C7)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = if (hasResume) R.drawable.ic_badge else R.drawable.ic_info),
+                        contentDescription = "状态",
+                        tint = if (hasResume) Color(0xFF16A34A) else Color(0xFFD97706),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (hasResume) "已关联求职档案经历" else "尚未导入个人简历",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (hasResume) Color(0xFF15803D) else Color(0xFFB45309)
+                    )
+                    Text(
+                        text = if (hasResume) {
+                            if (targetRole.isNotBlank()) "主修方向：$targetRole" else "已自动调取简历项目事实，将针对您的真实经历设计回答思路"
+                        } else {
+                            "未导入简历时仅基于岗位通用考点预测；建议导入简历，量身生成回答策略"
+                        },
+                        fontSize = 11.sp,
+                        color = if (hasResume) Color(0xFF166534) else Color(0xFF92400E)
+                    )
+                }
+                TextButton(
+                    onClick = onNavigateToProfile,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = if (hasResume) "查看/修改" else "前往上传",
+                        fontSize = 11.5.sp,
+                        color = if (hasResume) Color(0xFF15803D) else Color(0xFFB45309),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        // 4. 一键生成按钮
+        Button(
+            onClick = {
+                val jd = jdText.trim()
+                if (jd.length < 10) {
+                    Toast.makeText(context, "请先输入或读取至少 10 个字的岗位 JD", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+                isGenerating = true
+                errorMessage = null
+                coroutineScope.launch {
+                    val result = DeepSeekClient.generateInterviewQuestions(context, jd)
+                    isGenerating = false
+                    result.onSuccess { list ->
+                        if (list.isNotEmpty()) {
+                            questions = list
+                            expandedIndices = setOf(1)
+                            selectedCategoryFilter = "全部考点"
+                            Toast.makeText(context, "成功生成 ${list.size} 道针对性高频考题！", Toast.LENGTH_SHORT).show()
+                        } else {
+                            errorMessage = "未成功提取出考题，建议丰富岗位 JD 内容后重试"
+                        }
+                    }.onFailure { err ->
+                        errorMessage = err.localizedMessage ?: "生成考题失败，请检查网络或配置"
+                    }
+                }
+            },
+            enabled = !isGenerating && jdText.trim().length >= 10,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF4F46E5),
+                disabledContainerColor = Color(0xFFCBD5E1)
+            )
+        ) {
+            if (isGenerating) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "正在交叉比对 JD 与简历生成深度押题中...",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            } else {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_sparkle),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (questions.isEmpty()) "开始预测岗位高频面试考题" else "重新深度预测考题",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
+
+        Text(
+            text = "当前调用大模型：$modelName · 涵盖底层原理、真实性深挖、架构设计与避坑沟通 4 维考核",
+            fontSize = 11.sp,
+            color = Color(0xFF64748B),
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
+
+        // 5. 错误提示
+        if (errorMessage != null) {
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2)),
+                border = BorderStroke(1.dp, Color(0xFFFECACA))
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        text = "生成提示：$errorMessage",
+                        fontSize = 12.5.sp,
+                        color = Color(0xFFDC2626),
+                        lineHeight = 18.sp
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    TextButton(
+                        onClick = onNavigateToSettings,
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text("前往【AI设置】检查 API Key 或连通性", fontSize = 11.5.sp, color = Color(0xFFDC2626), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // 6. 分类筛选 Chip 条 (当已有考题时)
+        if (questions.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                categories.forEach { cat ->
+                    val isSelected = selectedCategoryFilter == cat
+                    val count = if (cat == "全部考点") questions.size else questions.count { it.category == cat }
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { selectedCategoryFilter = cat },
+                        label = {
+                            Text(
+                                text = "$cat ($count)",
+                                fontSize = 11.5.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFF4F46E5),
+                            selectedLabelColor = Color.White,
+                            containerColor = Color.White,
+                            labelColor = Color(0xFF475569)
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isSelected,
+                            borderColor = if (isSelected) Color(0xFF4F46E5) else Color(0xFFE2E8F0)
+                        )
+                    )
+                }
+            }
+
+            // 7. 考题列表卡片流
+            filteredQuestions.forEach { q ->
+                val actualIndex = questions.indexOf(q) + 1
+                val isExpanded = expandedIndices.contains(actualIndex)
+
+                val (badgeBg, badgeText) = when {
+                    q.category.contains("技术") -> Pair(Color(0xFFEFF6FF), Color(0xFF1D4ED8))
+                    q.category.contains("项目") || q.category.contains("深挖") -> Pair(Color(0xFFFAF5FF), Color(0xFF7E22CE))
+                    q.category.contains("架构") || q.category.contains("场景") -> Pair(Color(0xFFFFFBEB), Color(0xFFB45309))
+                    else -> Pair(Color(0xFFECFDF5), Color(0xFF047857))
+                }
+
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    expandedIndices = if (isExpanded) {
+                                        expandedIndices - actualIndex
+                                    } else {
+                                        expandedIndices + actualIndex
+                                    }
+                                },
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = badgeBg
+                                ) {
+                                    Text(
+                                        text = q.category,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = badgeText,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Q$actualIndex",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF94A3B8)
+                                )
+                            }
+
+                            Text(
+                                text = if (isExpanded) "收起解析 ▲" else "展开高分回答 ▼",
+                                fontSize = 11.sp,
+                                color = Color(0xFF4F46E5),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = q.question,
+                            fontSize = 14.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A),
+                            lineHeight = 21.sp
+                        )
+
+                        if (isExpanded) {
+                            Spacer(modifier = Modifier.height(14.dp))
+                            HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // 考官意图
+                            if (q.intention.isNotBlank()) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = Color(0xFFF8FAFC),
+                                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(
+                                            text = "【考官核心意图与下潜陷阱】",
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF1E293B)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = q.intention,
+                                            fontSize = 12.sp,
+                                            color = Color(0xFF475569),
+                                            lineHeight = 18.sp
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
+                            }
+
+                            // 回答思路 (STAR)
+                            if (q.answerStrategy.isNotBlank()) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = Color(0xFFF0FDF4),
+                                    border = BorderStroke(1.dp, Color(0xFFDCFCE7)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(
+                                            text = "【结合真实经历的推荐回答逻辑 (STAR 法则)】",
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF15803D)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = q.answerStrategy,
+                                            fontSize = 12.sp,
+                                            color = Color(0xFF166534),
+                                            lineHeight = 18.sp
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
+                            }
+
+                            // 避坑指南
+                            if (q.pitfall.isNotBlank()) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = Color(0xFFFEF2F2),
+                                    border = BorderStroke(1.dp, Color(0xFFFEE2E2)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(
+                                            text = "【大厂面试避坑红线】",
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFFB91C1C)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = q.pitfall,
+                                            fontSize = 12.sp,
+                                            color = Color(0xFF991B1B),
+                                            lineHeight = 18.sp
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+
+                            // 底部操作栏
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        val fullText = buildString {
+                                            append("【题目】：").append(q.question).append("\n\n")
+                                            if (q.intention.isNotBlank()) append("【考官意图】：").append(q.intention).append("\n\n")
+                                            if (q.answerStrategy.isNotBlank()) append("【回答思路】：").append(q.answerStrategy).append("\n\n")
+                                            if (q.pitfall.isNotBlank()) append("【避坑指南】：").append(q.pitfall)
+                                        }
+                                        clipboardManager.setText(AnnotatedString(fullText))
+                                        Toast.makeText(context, "已复制 Q$actualIndex 题目与回答思路到剪贴板！", Toast.LENGTH_SHORT).show()
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_copy),
+                                        contentDescription = "复制",
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("复制本题与思路", fontSize = 11.5.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (!isGenerating) {
+            // 空状态提示
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFF1F5F9)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_lightbulb),
+                            contentDescription = null,
+                            tint = Color(0xFF94A3B8),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "暂无预测考题",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF334155)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "在上方提供目标岗位的 JD 职责要求，并点击【开始预测岗位高频面试考题】，AI 将为您量身定制全套面试攻防策略！",
+                        fontSize = 12.sp,
+                        color = Color(0xFF64748B),
+                        lineHeight = 18.sp,
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
                 }
             }
         }

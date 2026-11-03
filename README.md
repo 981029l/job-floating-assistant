@@ -43,7 +43,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.2.8-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.8/JobAssistant-v1.2.8-debug.apk)
+- **最新正式版直链**：[JobAssistant-v1.2.9.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.9/JobAssistant-v1.2.9.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -104,6 +104,15 @@ job-floating-assistant/
 
 ## 版本演进记录
 
+- **v1.2.9**：
+  - 全新上线【岗位针对性模拟面试 · 考点预测押题】（主应用独立 Tab 2）：
+    - 4 维考题深度穿透：技术深水区原理追问、项目经历真实性深挖、系统架构与场景设计、HR 与综合素质；
+    - 岗位 JD 与简历双源联动：一键同步无障碍服务捕获的当前屏幕 JD，结合求职档案中真实项目经历量身命题；
+    - 深度解析与避坑：每道题均配备「考官考察意图与考核陷阱」、「STAR 法则高分回答思路」与「大厂避坑红线」；
+    - 支持按考点分类一键筛选切换、展开/折叠与一键快速复制。
+  - 安装包全面去除「-debug」后缀：
+    - 打包流水线全面切换为正式发布模式（assembleRelease），产物规范命名为 `JobAssistant-v1.2.9.apk`；
+    - 继承固化密钥签名，支持已有用户直接无缝一键覆盖安装，数据 100% 完整保留。
 - **v1.2.8**：
   - 悬浮窗顶栏精简化重构：彻底移除左侧多余冗余的关闭按钮，左侧规范展示「AI 定制打招呼语」模块标题，右上角保留规范优雅的「✕ 关闭」触控药丸，消除双关闭按钮排版怪异问题；
   - 双风格正则解析鲁棒性升级：自动规范 CRLF 换行符，增强编号标题（如「1. 风格一」）兼容切分，确保模型各种格式下均能稳定分出两张独立卡片与独立复制按钮；

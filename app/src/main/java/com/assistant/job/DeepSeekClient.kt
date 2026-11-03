@@ -550,7 +550,123 @@ $rawText
             Result.failure(e)
         }
     }
+
+    suspend fun generateInterviewQuestions(
+        context: Context,
+        jdText: String,
+        resumeText: String = ""
+    ): Result<List<InterviewQuestion>> = withContext(Dispatchers.IO) {
+        try {
+            val apiKey = StorageManager.getApiKey(context)
+            if (apiKey.isBlank()) {
+                return@withContext Result.failure(Exception("请先在设置中配置 API Key"))
+            }
+
+            val effectiveResume = if (resumeText.isNotBlank()) {
+                resumeText
+            } else {
+                val fullResume = StorageManager.getResume(context)
+                val summary = StorageManager.getAiSummary(context)
+                if (fullResume.isNotBlank()) fullResume else summary
+            }
+
+            val systemPrompt = """你是一位顶尖的大厂技术专家、技术合伙人与资深技术面试官。
+请对比【目标岗位 JD】与【候选人真实经历】，站在面试官的角度，生成 4 到 6 道真实面试中最容易被连环追问的高价值考题。
+
+【考核维度必须涵盖】：
+1. 技术深水区追问：针对 JD 最硬核的技术要求，考察技术底层原理、性能优化或技术攻坚细节；
+2. 项目真实性深挖：结合候选人项目经历中可能提到的成果，深挖指标衡量依据、技术方案选型与踩坑解决；
+3. 系统架构与场景设计：结合该岗位日常业务场景（如高并发、复杂渲染、工程化治理）的现场设计题；
+4. 综合素质与避坑沟通：针对离职动机、业务协作冲突或压力应对的考察。
+
+【输出规范】：
+请严格按以下标准结构输出每道题目，每道题之间使用 ===题目分割=== 隔开，便于程序精确解析：
+
+===题目分割===
+【考题分类】：技术深水区追问
+【面试提问】：[具体的面试官原话问题]
+【考察意图】：[面试官问这个问题的真实意图、考察的能力与暗藏的考核陷阱]
+【回答思路】：[基于候选人真实经历给出的 STAR 法则高分回答逻辑与核心技术亮点]
+【避坑指南】：[回答该问题绝对不能说的禁忌或踩坑点]"""
+
+            val userContent = """【目标岗位 JD】：
+${if (jdText.isNotBlank()) jdText else "通用资深技术开发岗位要求"}
+
+【候选人真实简历/经历】：
+${if (effectiveResume.isNotBlank()) effectiveResume else "暂无详细简历，请基于岗位最核心的技术要求提出深水区问题"}"""
+
+            val rawResult = callDeepSeek(context, systemPrompt, userContent, 0.6)
+            if (rawResult.isFailure) {
+                return@withContext Result.failure(rawResult.exceptionOrNull() ?: Exception("调用失败"))
+            }
+
+            val rawText = rawResult.getOrNull() ?: ""
+            val questions = parseInterviewQuestions(rawText)
+            Result.success(questions)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun parseInterviewQuestions(raw: String): List<InterviewQuestion> {
+        val list = mutableListOf<InterviewQuestion>()
+        var cleaned = raw.trim().replace("\r\n", "\n")
+        if (cleaned.startsWith("```") && cleaned.endsWith("```")) {
+            cleaned = cleaned.replace(Regex("^```[a-zA-Z]*\\n?"), "").replace(Regex("\\n?```$"), "").trim()
+        }
+
+        val blocks = cleaned.split(Regex("===+(?:题目分割|题目 \\d+|第\\d+题)===+")).map { it.trim() }.filter { it.isNotBlank() }
+
+        for (block in blocks) {
+            val catMatch = Regex("【考题分类】[：:]*([^\\n]+)").find(block)
+            val qMatch = Regex("【面试提问】[：:]*([\\s\\S]*?)(?=【考察意图】|$)").find(block)
+            val intentMatch = Regex("【考察意图】[：:]*([\\s\\S]*?)(?=【回答思路】|$)").find(block)
+            val ansMatch = Regex("【回答思路】[：:]*([\\s\\S]*?)(?=【避坑指南】|$)").find(block)
+            val pitMatch = Regex("【避坑指南】[：:]*([\\s\\S]*?)$").find(block)
+
+            val category = catMatch?.groupValues?.get(1)?.trim() ?: "核心技术考核"
+            val question = qMatch?.groupValues?.get(1)?.trim() ?: ""
+            val intention = intentMatch?.groupValues?.get(1)?.trim() ?: ""
+            val answer = ansMatch?.groupValues?.get(1)?.trim() ?: ""
+            val pitfall = pitMatch?.groupValues?.get(1)?.trim() ?: ""
+
+            if (question.isNotBlank()) {
+                list.add(
+                    InterviewQuestion(
+                        category = category,
+                        question = question,
+                        intention = intention,
+                        answerStrategy = answer,
+                        pitfall = pitfall
+                    )
+                )
+            }
+        }
+
+        // 兜底逻辑：若未能按标准分割提取出多道题，尝试基于标题段落切分
+        if (list.isEmpty()) {
+            val sections = cleaned.split(Regex("\\n(?=(?:[#*\\-=\\s]*\\d+[.、]|【[0-9一二三四五]】))")).filter { it.trim().length > 30 }
+            for (sec in sections) {
+                val lines = sec.trim().split("\n")
+                val title = lines.firstOrNull()?.replace(Regex("^[#*\\-=\\s\\d.、【】]+"), "")?.trim() ?: "核心考题"
+                val body = if (lines.size > 1) lines.drop(1).joinToString("\n").trim() else sec.trim()
+                list.add(
+                    InterviewQuestion(
+                        category = "综合深度考点",
+                        question = title,
+                        intention = "考察针对该技术方案的深度认知与实际解决问题的工程化落地能力。",
+                        answerStrategy = body,
+                        pitfall = "切忌脱离实际项目空谈理论，重点围绕自身主导的真实攻坚展开。"
+                    )
+                )
+            }
+        }
+
+        return list
+    }
+
 }
+
 
 data class StructuredResume(
     val targetRole: String = "",
@@ -563,4 +679,12 @@ data class GreetingOption(
     val title: String,
     val text: String,
     val tip: String = ""
+)
+
+data class InterviewQuestion(
+    val category: String,
+    val question: String,
+    val intention: String,
+    val answerStrategy: String,
+    val pitfall: String = ""
 )
