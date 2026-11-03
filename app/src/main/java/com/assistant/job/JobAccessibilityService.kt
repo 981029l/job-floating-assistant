@@ -17,6 +17,19 @@ class JobAccessibilityService : AccessibilityService() {
         var cachedAppScreenText: String = ""
         var lastExtractedJd: String = ""
 
+        // 方案 A：用户滑动自然累积增量缓冲区
+        private val accumulatedLines = LinkedHashSet<String>()
+        private var lastActivePackage: String = ""
+        private var lastWindowClassName: String = ""
+        private var isMergedLongJd: Boolean = false
+
+        fun isLongJdMerged(): Boolean = isMergedLongJd
+
+        fun clearAccumulation() {
+            accumulatedLines.clear()
+            isMergedLongJd = false
+        }
+
         fun isServiceRunning(): Boolean = instance != null
 
         fun isServiceEnabledInSystem(context: Context): Boolean {
@@ -42,10 +55,16 @@ class JobAccessibilityService : AccessibilityService() {
             return false
         }
 
+        // 过滤常见固定底栏/干扰行
+        private val IGNORED_FIXED_TEXTS = setOf(
+            "立即沟通", "发简历", "打招呼", "聊一聊", "收藏", "分享", "举报", "投递",
+            "点我聊聊", "在线", "今日活跃", "刚刚活跃", "查看全部", "返回", "更多"
+        )
+
         fun captureCurrentScreenText(): String {
             val service = instance ?: return cachedAppScreenText
 
-            val sb = StringBuilder()
+            val currentLines = mutableListOf<String>()
 
             // 1. 优先尝试从所有非系统应用窗口提取 (避免悬浮窗遮挡导致的焦点丢失)
             val windows = try {
@@ -57,46 +76,69 @@ class JobAccessibilityService : AccessibilityService() {
             if (!windows.isNullOrEmpty()) {
                 for (w in windows) {
                     if (w.type == AccessibilityWindowInfo.TYPE_APPLICATION) {
-                        w.root?.let { traverseNode(it, sb) }
+                        w.root?.let { collectNodeLines(it, currentLines) }
                     }
                 }
             }
 
             // 2. 如果窗口遍历没有得到足够文字，尝试当前活跃根节点
-            if (sb.length < 20) {
+            if (currentLines.isEmpty()) {
                 val root = try {
                     service.rootInActiveWindow
                 } catch (_: Exception) {
                     null
                 }
                 if (root != null) {
-                    traverseNode(root, sb)
+                    collectNodeLines(root, currentLines)
                 }
             }
 
-            val extracted = sb.toString().trim()
-            if (extracted.length >= 20) {
-                lastExtractedJd = extracted
-                cachedAppScreenText = extracted
-                return extracted
+            // 3. 将当前视口的行增量合并到 accumulatedLines
+            val previousSize = accumulatedLines.size
+            for (line in currentLines) {
+                if (isValidJdLine(line)) {
+                    accumulatedLines.add(line)
+                }
             }
 
-            // 3. 兜底返回最近一次自动监听缓存到的文字
-            return if (cachedAppScreenText.isNotBlank()) cachedAppScreenText else extracted
+            if (accumulatedLines.size > previousSize && previousSize > 0) {
+                isMergedLongJd = true
+            }
+
+            val fullAccumulated = accumulatedLines.joinToString("\n").trim()
+            if (fullAccumulated.length >= 20) {
+                lastExtractedJd = fullAccumulated
+                cachedAppScreenText = fullAccumulated
+                return fullAccumulated
+            }
+
+            val singleSnapshot = currentLines.joinToString("\n").trim()
+            if (singleSnapshot.length >= 20) {
+                lastExtractedJd = singleSnapshot
+                cachedAppScreenText = singleSnapshot
+                return singleSnapshot
+            }
+
+            // 4. 兜底返回最近一次自动监听缓存到的文字
+            return if (cachedAppScreenText.isNotBlank()) cachedAppScreenText else fullAccumulated
         }
 
-        private fun traverseNode(node: AccessibilityNodeInfo?, sb: StringBuilder) {
+        private fun isValidJdLine(text: String): Boolean {
+            if (text.length <= 1) return false
+            if (text.matches(Regex("^[0-9:%/\\s-]{1,8}$"))) return false
+            if (IGNORED_FIXED_TEXTS.contains(text)) return false
+            return true
+        }
+
+        private fun collectNodeLines(node: AccessibilityNodeInfo?, list: MutableList<String>) {
             if (node == null) return
             val text = node.text?.toString()?.trim()
-            if (!text.isNullOrEmpty() && text.length > 1) {
-                // 忽略纯时间/电池电量
-                if (!text.matches(Regex("^[0-9:%/\\s-]{1,8}$"))) {
-                    sb.append(text).append("\n")
-                }
+            if (!text.isNullOrEmpty() && isValidJdLine(text)) {
+                list.add(text)
             }
             for (i in 0 until node.childCount) {
                 try {
-                    traverseNode(node.getChild(i), sb)
+                    collectNodeLines(node.getChild(i), list)
                 } catch (_: Exception) {}
             }
         }
@@ -110,20 +152,44 @@ class JobAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
 
-        // 当用户在任何第三方应用中滑动、切换窗口时，主动捕获并缓存屏幕文本
         val pkg = event.packageName?.toString() ?: ""
-        if (pkg != packageName) {
+        if (pkg.isBlank() || pkg == packageName) return
+
+        // 1. 监测页面窗口切换（切换 Activity / 退出重进），重置累积缓冲区
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            val className = event.className?.toString() ?: ""
+            if (pkg != lastActivePackage || (className.isNotBlank() && className != lastWindowClassName && !className.contains("Popup") && !className.contains("Dialog"))) {
+                lastActivePackage = pkg
+                lastWindowClassName = className
+                clearAccumulation()
+            }
+        }
+
+        // 2. 监测滑动事件与内容变化，增量累积新出现的屏幕文字
+        if (event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED ||
+            event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+        ) {
             val root = try {
                 rootInActiveWindow
             } catch (_: Exception) {
                 null
             }
             if (root != null) {
-                val sb = StringBuilder()
-                traverseNode(root, sb)
-                val text = sb.toString().trim()
-                if (text.length >= 20) {
-                    cachedAppScreenText = text
+                val lines = mutableListOf<String>()
+                collectNodeLines(root, lines)
+                val initialCount = accumulatedLines.size
+                for (line in lines) {
+                    if (isValidJdLine(line)) {
+                        accumulatedLines.add(line)
+                    }
+                }
+                if (accumulatedLines.size > initialCount && initialCount > 0) {
+                    isMergedLongJd = true
+                }
+                val merged = accumulatedLines.joinToString("\n").trim()
+                if (merged.length >= 20) {
+                    cachedAppScreenText = merged
+                    lastExtractedJd = merged
                 }
             }
         }

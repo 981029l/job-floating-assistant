@@ -280,7 +280,8 @@ class FloatingService : Service() {
         val jdStatusBadge = TextView(this).apply {
             val count = initialJd.length
             if (count >= 20) {
-                text = "已识别 · $count 字"
+                val isMerged = JobAccessibilityService.isLongJdMerged()
+                text = if (isMerged) "已智能合并长JD · $count 字" else "已识别 · $count 字"
                 setTextColor(Color.parseColor("#059669"))
                 background = GradientDrawable().apply {
                     setColor(Color.parseColor("#ECFDF5"))
@@ -372,7 +373,7 @@ class FloatingService : Service() {
         }
 
         val pasteBtn = Button(this).apply {
-            text = "粘贴剪贴板"
+            text = "粘贴"
             textSize = 11.5f
             setTextColor(Color.parseColor("#2563EB"))
             background = GradientDrawable().apply {
@@ -380,8 +381,8 @@ class FloatingService : Service() {
                 cornerRadius = 8 * density
                 setStroke((1 * density).toInt(), Color.parseColor("#BFDBFE"))
             }
-            layoutParams = LinearLayout.LayoutParams(0, (36 * density).toInt(), 1f).apply {
-                rightMargin = (6 * density).toInt()
+            layoutParams = LinearLayout.LayoutParams(0, (36 * density).toInt(), 0.85f).apply {
+                rightMargin = (5 * density).toInt()
             }
             setOnClickListener {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -401,6 +402,33 @@ class FloatingService : Service() {
             }
         }
 
+        val appendBtn = Button(this).apply {
+            text = "追加屏幕"
+            textSize = 11.5f
+            setTextColor(Color.parseColor("#059669"))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#ECFDF5"))
+                cornerRadius = 8 * density
+                setStroke((1 * density).toInt(), Color.parseColor("#A7F3D0"))
+            }
+            layoutParams = LinearLayout.LayoutParams(0, (36 * density).toInt(), 1f).apply {
+                rightMargin = (5 * density).toInt()
+            }
+            setOnClickListener {
+                val latestJd = JobAccessibilityService.captureCurrentScreenText()
+                if (latestJd.length >= 20) {
+                    jdEditText.setText(latestJd)
+                    jdEditText.setSelection(latestJd.length)
+                    previewSnippet.text = "预览: " + latestJd.replace("\n", " ").trim()
+                    val isMerged = JobAccessibilityService.isLongJdMerged()
+                    jdStatusBadge.text = if (isMerged) "已智能合并长JD · ${latestJd.length} 字" else "已识别 · ${latestJd.length} 字"
+                    Toast.makeText(this@FloatingService, "已刷新并追加屏幕文本（当前共 ${latestJd.length} 字）", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this@FloatingService, "未捕获到新增屏幕内容，请稍作滑动后再试", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
         val clearBtn = Button(this).apply {
             text = "清空"
             textSize = 11.5f
@@ -409,8 +437,8 @@ class FloatingService : Service() {
                 setColor(Color.parseColor("#F1F5F9"))
                 cornerRadius = 8 * density
             }
-            layoutParams = LinearLayout.LayoutParams((52 * density).toInt(), (36 * density).toInt()).apply {
-                rightMargin = (6 * density).toInt()
+            layoutParams = LinearLayout.LayoutParams((44 * density).toInt(), (36 * density).toInt()).apply {
+                rightMargin = (5 * density).toInt()
             }
             setOnClickListener {
                 jdEditText.setText("")
@@ -430,6 +458,7 @@ class FloatingService : Service() {
         }
 
         actionRow.addView(pasteBtn)
+        actionRow.addView(appendBtn)
         actionRow.addView(clearBtn)
         actionRow.addView(regenerateBtn)
 

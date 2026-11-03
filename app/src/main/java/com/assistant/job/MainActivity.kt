@@ -1160,7 +1160,7 @@ fun DashboardTab(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "点击屏幕侧边浮标圆形头像，系统在0.2秒内快速解析岗位并生成定制破冰语；",
+                            text = "长篇岗位 JD 浏览：向下自然滑动屏幕，助手自动静默去重合并全屏长文本；",
                             fontSize = 11.5.sp,
                             color = Color(0xFF78350F),
                             lineHeight = 16.sp
@@ -1177,6 +1177,26 @@ fun DashboardTab(
                             contentAlignment = Alignment.Center
                         ) {
                             Text("3", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFB45309))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "点击屏幕侧边浮标圆形头像，系统快速解析岗位并生成定制破冰语；",
+                            fontSize = 11.5.sp,
+                            color = Color(0xFF78350F),
+                            lineHeight = 16.sp
+                        )
+                    }
+
+                    // Step 4
+                    Row(verticalAlignment = Alignment.Top) {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFFDE68A)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("4", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFB45309))
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
