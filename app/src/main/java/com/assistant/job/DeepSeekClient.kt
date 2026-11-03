@@ -291,21 +291,49 @@ $resume
 
     private fun parseOptions(raw: String): List<GreetingOption> {
         val list = mutableListOf<GreetingOption>()
-        val hasStyle = raw.contains("===风格一===") && raw.contains("===风格二===")
-        val hasPlan = raw.contains("===方案一===") && raw.contains("===方案二===")
-        if (hasStyle) {
-            val part1 = raw.substringAfter("===风格一===").substringBefore("===风格二===").trim()
-            val part2 = raw.substringAfter("===风格二===").trim()
-            list.add(GreetingOption("技术硬核型", part1))
-            list.add(GreetingOption("全面匹配型", part2))
-        } else if (hasPlan) {
-            val part1 = raw.substringAfter("===方案一===").substringBefore("===方案二===").trim()
-            val part2 = raw.substringAfter("===方案二===").trim()
-            list.add(GreetingOption("技术硬核型", part1))
-            list.add(GreetingOption("全面匹配型", part2))
-        } else {
-            list.add(GreetingOption("精选破冰语", raw.trim()))
+        var cleaned = raw.trim()
+        if (cleaned.startsWith("```") && cleaned.endsWith("```")) {
+            cleaned = cleaned.replace(Regex("^```[a-zA-Z]*\\n?"), "").replace(Regex("\\n?```$"), "").trim()
         }
+
+        // 1. 优先按完整多行标题进行正则切分（容错各种标记如 ===风格一===、### 风格一、[风格一] 等）
+        val p1 = Regex("^[#*\\-=\\s【]*?(?:风格一|方案一|风格 1|方案 1)[^\\n]*$", RegexOption.MULTILINE)
+        val p2 = Regex("^[#*\\-=\\s【]*?(?:风格二|方案二|风格 2|方案 2)[^\\n]*$", RegexOption.MULTILINE)
+
+        val m1 = p1.find(cleaned)
+        val m2 = p2.find(cleaned)
+
+        if (m1 != null && m2 != null && m1.range.first < m2.range.first) {
+            val part1 = cleaned.substring(m1.range.last + 1, m2.range.first).trim()
+            val part2 = cleaned.substring(m2.range.last + 1).trim()
+            if (part1.isNotBlank()) list.add(GreetingOption("技术硬核型", part1))
+            if (part2.isNotBlank()) list.add(GreetingOption("全面匹配型", part2))
+            return list
+        }
+
+        // 2. 次级单行行内切分
+        val p1Inline = Regex("(?:===|【|###)?\\s*(?:风格一|方案一)[^=\\n】]*?(?:===|】|\\n)", RegexOption.IGNORE_CASE)
+        val p2Inline = Regex("(?:===|【|###)?\\s*(?:风格二|方案二)[^=\\n】]*?(?:===|】|\\n)", RegexOption.IGNORE_CASE)
+        val im1 = p1Inline.find(cleaned)
+        val im2 = p2Inline.find(cleaned)
+
+        if (im1 != null && im2 != null && im1.range.first < im2.range.first) {
+            val part1 = cleaned.substring(im1.range.last + 1, im2.range.first).trim()
+            val part2 = cleaned.substring(im2.range.last + 1).trim()
+            if (part1.isNotBlank()) list.add(GreetingOption("技术硬核型", part1))
+            if (part2.isNotBlank()) list.add(GreetingOption("全面匹配型", part2))
+            return list
+        }
+
+        // 3. 兜底策略：若大模型以双换行分段输出了两段具有一定长度的候选内容
+        val paragraphs = cleaned.split("\n\n").map { it.trim() }.filter { it.length > 25 }
+        if (paragraphs.size >= 2) {
+            list.add(GreetingOption("技术硬核型", paragraphs[0]))
+            list.add(GreetingOption("全面匹配型", paragraphs[1]))
+            return list
+        }
+
+        list.add(GreetingOption("精选破冰语", cleaned))
         return list
     }
     suspend fun extractStructuredResume(context: Context, rawText: String): Result<StructuredResume> = withContext(Dispatchers.IO) {

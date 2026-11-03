@@ -221,34 +221,48 @@ class FloatingService : Service() {
             elevation = 28f
         }
 
-        // 顶栏（标题 + 关闭按钮）
+        // 顶栏（左上角明确关闭按钮 + 居中标题 + 右侧轻量关闭，防止误触）
         val headerLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding((12 * density).toInt(), (10 * density).toInt(), (10 * density).toInt(), (10 * density).toInt())
+            setPadding((10 * density).toInt(), (8 * density).toInt(), (10 * density).toInt(), (8 * density).toInt())
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#F0F5FF"))
                 cornerRadius = 16 * density
             }
+        }
+        val closeBtnLeft = TextView(this).apply {
+            text = "✕ 关闭"
+            textSize = 12f
+            setTextColor(Color.parseColor("#475569"))
+            paint.isFakeBoldText = true
+            setPadding((10 * density).toInt(), (5 * density).toInt(), (10 * density).toInt(), (5 * density).toInt())
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#E2E8F0"))
+                cornerRadius = 10 * density
+            }
+            setOnClickListener { dismissDialog() }
         }
         val titleView = TextView(this).apply {
             text = "AI 定制打招呼语"
             textSize = 14f
             setTextColor(Color.parseColor("#1E293B"))
             paint.isFakeBoldText = true
+            gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
-        val closeBtn = Button(this).apply {
-            text = "关闭"
-            textSize = 12f
-            setTextColor(Color.parseColor("#64748B"))
-            setBackgroundColor(Color.TRANSPARENT)
-            setPadding(0, 0, 0, 0)
-            layoutParams = LinearLayout.LayoutParams((44 * density).toInt(), (32 * density).toInt())
+        val closeBtnRight = TextView(this).apply {
+            text = "✕"
+            textSize = 14f
+            setTextColor(Color.parseColor("#94A3B8"))
+            paint.isFakeBoldText = true
+            gravity = Gravity.CENTER
+            setPadding((10 * density).toInt(), (5 * density).toInt(), (10 * density).toInt(), (5 * density).toInt())
             setOnClickListener { dismissDialog() }
         }
+        headerLayout.addView(closeBtnLeft)
         headerLayout.addView(titleView)
-        headerLayout.addView(closeBtn)
+        headerLayout.addView(closeBtnRight)
         rootLayout.addView(headerLayout)
 
         // -------------------------------------------------------------
@@ -271,42 +285,50 @@ class FloatingService : Service() {
             }
         }
 
-        // 1. 卡片顶栏（状态徽章 + 标题 + 展开/收起按钮）
+        // 1. 卡片顶栏（左侧标题+徽章，中间弹性空隙，右侧操作按钮，彻底消除文字挤压）
         val jdHeaderRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val jdTitleView = TextView(this).apply {
+            text = "岗位 JD"
+            textSize = 13f
+            setTextColor(Color.parseColor("#1E293B"))
+            paint.isFakeBoldText = true
         }
 
         val jdStatusBadge = TextView(this).apply {
             val count = initialJd.length
             if (count >= 20) {
                 val isMerged = JobAccessibilityService.isLongJdMerged()
-                text = if (isMerged) "已智能合并长JD · $count 字" else "已识别 · $count 字"
+                text = if (isMerged) "合并长JD · ${count}字" else "已就绪 · ${count}字"
                 setTextColor(Color.parseColor("#059669"))
                 background = GradientDrawable().apply {
                     setColor(Color.parseColor("#ECFDF5"))
                     cornerRadius = 6 * density
                 }
             } else {
-                text = "未完全识别 · 需手动粘贴"
+                text = "未就绪 · 需粘贴"
                 setTextColor(Color.parseColor("#D97706"))
                 background = GradientDrawable().apply {
                     setColor(Color.parseColor("#FFFBEB"))
                     cornerRadius = 6 * density
                 }
             }
-            textSize = 11f
+            textSize = 10.5f
             paint.isFakeBoldText = true
             setPadding((6 * density).toInt(), (2 * density).toInt(), (6 * density).toInt(), (2 * density).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                leftMargin = (8 * density).toInt()
+            }
         }
 
-        val jdTitleView = TextView(this).apply {
-            text = "岗位 JD 识别与校对"
-            textSize = 12.5f
-            setTextColor(Color.parseColor("#1E293B"))
-            paint.isFakeBoldText = true
-            setPadding((8 * density).toInt(), 0, 0, 0)
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        val jdSpacer = View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
         }
 
         val toggleBtn = TextView(this).apply {
@@ -321,8 +343,9 @@ class FloatingService : Service() {
             }
         }
 
-        jdHeaderRow.addView(jdStatusBadge)
         jdHeaderRow.addView(jdTitleView)
+        jdHeaderRow.addView(jdStatusBadge)
+        jdHeaderRow.addView(jdSpacer)
         jdHeaderRow.addView(toggleBtn)
         jdCard.addView(jdHeaderRow)
 
@@ -421,7 +444,7 @@ class FloatingService : Service() {
                     jdEditText.setSelection(latestJd.length)
                     previewSnippet.text = "预览: " + latestJd.replace("\n", " ").trim()
                     val isMerged = JobAccessibilityService.isLongJdMerged()
-                    jdStatusBadge.text = if (isMerged) "已智能合并长JD · ${latestJd.length} 字" else "已识别 · ${latestJd.length} 字"
+                    jdStatusBadge.text = if (isMerged) "合并长JD · ${latestJd.length}字" else "已就绪 · ${latestJd.length}字"
                     Toast.makeText(this@FloatingService, "已刷新并追加屏幕文本（当前共 ${latestJd.length} 字）", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(this@FloatingService, "未捕获到新增屏幕内容，请稍作滑动后再试", Toast.LENGTH_SHORT).show()
@@ -475,11 +498,11 @@ class FloatingService : Service() {
             override fun afterTextChanged(s: Editable?) {
                 val len = s?.length ?: 0
                 if (len >= 20) {
-                    jdStatusBadge.text = "已就绪 · $len 字"
+                    jdStatusBadge.text = "就绪 · ${len}字"
                     jdStatusBadge.setTextColor(Color.parseColor("#059669"))
                     (jdStatusBadge.background as? GradientDrawable)?.setColor(Color.parseColor("#ECFDF5"))
                 } else {
-                    jdStatusBadge.text = "内容较短 · $len 字"
+                    jdStatusBadge.text = "较短 · ${len}字"
                     jdStatusBadge.setTextColor(Color.parseColor("#D97706"))
                     (jdStatusBadge.background as? GradientDrawable)?.setColor(Color.parseColor("#FFFBEB"))
                 }
@@ -708,20 +731,27 @@ class FloatingService : Service() {
             setPadding(0, (10 * density).toInt(), 0, (14 * density).toInt())
         }
 
+        val btnColor = if (isHardcore) Color.parseColor("#1677FF") else Color.parseColor("#059669")
+        val btnText = if (option.title.isNotBlank() && option.title != "精选破冰语") {
+            "复制「${option.title}」并关闭"
+        } else {
+            "复制此话术并关闭"
+        }
+
         val copyBtn = Button(this).apply {
-            text = "复制此话术并关闭"
+            text = btnText
             setTextColor(Color.WHITE)
             textSize = 12f
             paint.isFakeBoldText = true
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#1677FF"))
+                setColor(btnColor)
                 cornerRadius = 10 * density
             }
             setOnClickListener {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 val clip = ClipData.newPlainText("Greeting", option.text)
                 clipboard.setPrimaryClip(clip)
-                Toast.makeText(this@FloatingService, "已复制到剪贴板，快去聊天框粘贴发送吧！", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@FloatingService, "已复制「${option.title}」话术到剪贴板！", Toast.LENGTH_SHORT).show()
                 dismissDialog()
             }
         }

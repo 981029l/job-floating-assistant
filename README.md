@@ -43,7 +43,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.2.1-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.1/JobAssistant-v1.2.1-debug.apk)
+- **最新正式版直链**：[JobAssistant-v1.2.2-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.2/JobAssistant-v1.2.2-debug.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -104,6 +104,10 @@ job-floating-assistant/
 
 ## 版本演进记录
 
+- **v1.2.2**：
+  - 顶栏布局重构：左上角新增明确的「✕ 关闭」触控药丸，居中标题，支持双角便捷关闭；
+  - 岗位 JD 卡片防挤压重构：消除「已合并长JD」与「识别与校对」相互挤压折行的 Bug，加入弹性间距，排版舒展；
+  - 双风格独立分卡与独立复制：多正则解析引擎将两种风格严格拆为「技术硬核型」与「全面匹配型」两张独立卡片，各配备专属颜色的复制按钮，复制目标清晰无歧义。
 - **v1.2.1**：
   - 实战破冰默认提示词全面重构：引入5维深度匹配规则（工作经验、技术栈、项目经验、技术攻坚、AI开发能力），生成硬核攻坚与全面交流双模风格；
   - 破冰解析引擎升级：同时兼容「风格一/风格二」与「方案一/方案二」格式，去除写死指标；
