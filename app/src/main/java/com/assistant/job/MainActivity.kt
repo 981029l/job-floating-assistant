@@ -617,14 +617,15 @@ fun DashboardTab(
                 ) {
                     chipList.forEach { m ->
                         val active = m == modelName
-                        Surface(
-                            onClick = { onQuickSwitchModel(m) },
-                            color = if (active) Color(0xFF1677FF) else Color(0xFFF1F5F9),
-                            shape = RoundedCornerShape(8.dp),
-                            border = if (active) null else BorderStroke(1.dp, Color(0xFFE2E8F0))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (active) Color(0xFF1677FF) else Color(0xFFF1F5F9))
+                                .then(if (active) Modifier else Modifier.border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(8.dp)))
+                                .clickable { onQuickSwitchModel(m) }
+                                .padding(horizontal = 12.dp, vertical = 7.dp)
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 if (active) {
