@@ -41,7 +41,7 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.0.5-debug.apk
+          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.0.6-debug.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -54,15 +54,15 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.5
-          name: "AI求职悬浮助手 v1.0.5 (Material 3 Expressive 旗舰级全新 UI)"
+          tag_name: v1.0.6
+          name: "AI求职悬浮助手 v1.0.6 (全套高保真概念图实现版)"
           body: |
-            🎉 **AI 求职悬浮助手 v1.0.5 旗舰级全新设计重构发布**：
-            1. 🌟 **全面重构为 Material 3 Expressive 旗舰级 UI 架构**：引入三段式底部导航栏（【悬浮主控】、【求职档案】、【AI设置】）；
-            2. 🐱 **C1 招手好运猫沉浸顶栏**：集成呼吸光效状态指示（“好运猫待命中 · 绿点呼吸”）；
-            3. 📱 **Bento-Grid 触控大卡片系统**：全局悬浮球主开关、核心权限自检、当前运行模型胶囊快捷切换，层级分明；
-            4. 📄 **独立求职档案中心**：支持 PDF/Word 文件导入与技能亮点标签化呈现。
-          files: release_apk/JobAssistant-v1.0.5-debug.apk
+            🎉 **AI 求职悬浮助手 v1.0.6 正式发布**：
+            1. 📱 **页面 1【悬浮主控 Dashboard】**：Bento 触控大开关、C1招手好运猫顶栏呼吸光效、核心权限自检与模型快捷切换；
+            2. 📄 **页面 2【求职档案 Profile】**：紫色高光简历上传卡片，支持 PDF/Word 文件解析导入与结构化技能标签呈现；
+            3. ⚙️ **页面 3【AI智囊设置 Settings】**：API Key 密文管理、Base URL 配置、联网获取可用模型列表与自定义 Prompt 规则；
+            4. ⚡ **页面 4【BOSS悬浮实测 Floating Overlay】**：C1 招手好运猫全局圆形浮标，带【技术硬核攻坚型】与【全面契合交流型】双卡片一键复制闭环。
+          files: release_apk/JobAssistant-v1.0.6-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -219,19 +219,26 @@ class FloatingService : Service() {
         val headerLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            setPadding((12 * density).toInt(), (10 * density).toInt(), (10 * density).toInt(), (10 * density).toInt())
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#F0F5FF"))
+                cornerRadius = 16 * density
+            }
         }
         val titleView = TextView(this).apply {
-            text = "AI 定制招呼语"
-            textSize = 17f
-            setTextColor(Color.parseColor("#1F1F1F"))
+            text = "AI 定制打招呼语 (DeepSeek 已就绪)"
+            textSize = 14f
+            setTextColor(Color.parseColor("#1E293B"))
             paint.isFakeBoldText = true
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
         val closeBtn = Button(this).apply {
             text = "✕"
-            textSize = 16f
-            setTextColor(Color.GRAY)
+            textSize = 15f
+            setTextColor(Color.parseColor("#64748B"))
             setBackgroundColor(Color.TRANSPARENT)
+            setPadding(0, 0, 0, 0)
+            layoutParams = LinearLayout.LayoutParams((32 * density).toInt(), (32 * density).toInt())
             setOnClickListener { dismissDialog() }
         }
         headerLayout.addView(titleView)
@@ -248,10 +255,20 @@ class FloatingService : Service() {
         }
         val contentContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, (8 * density).toInt(), 0, (8 * density).toInt())
+            setPadding(0, (10 * density).toInt(), 0, (8 * density).toInt())
         }
         scrollView.addView(contentContainer)
         rootLayout.addView(scrollView)
+
+        // 底部提示栏
+        val footerTip = TextView(this).apply {
+            text = "✓ 已成功识别当前屏幕 JD · 点击按钮自动写入手机剪贴板"
+            textSize = 10f
+            setTextColor(Color.parseColor("#64748B"))
+            gravity = Gravity.CENTER
+            setPadding(0, (8 * density).toInt(), 0, (2 * density).toInt())
+        }
+        rootLayout.addView(footerTip)
 
         dialogOverlayView = rootLayout
         try {
@@ -398,36 +415,64 @@ class FloatingService : Service() {
             orientation = LinearLayout.VERTICAL
             setPadding((14 * density).toInt(), (14 * density).toInt(), (14 * density).toInt(), (14 * density).toInt())
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#F8F9FA"))
+                setColor(Color.parseColor("#F8FAFC"))
                 cornerRadius = 14 * density
-                setStroke(2, Color.parseColor("#E9ECEF"))
+                setStroke((1.5f * density).toInt(), Color.parseColor("#E2E8F0"))
             }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = (16 * density).toInt()
+                bottomMargin = (14 * density).toInt()
             }
         }
 
+        // 标签与右侧高回复率徽章
+        val topRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val isHardcore = option.title.contains("硬核") || option.title.contains("技术")
+        val tagBg = if (isHardcore) Color.parseColor("#EFF6FF") else Color.parseColor("#ECFDF5")
+        val tagColor = if (isHardcore) Color.parseColor("#1677FF") else Color.parseColor("#059669")
+        val badgeText = if (isHardcore) "匹配度 96%" else "高回复率"
+
         val tagView = TextView(this).apply {
             text = "【${option.title}】"
-            setTextColor(Color.parseColor("#1677FF"))
+            setTextColor(tagColor)
             paint.isFakeBoldText = true
-            textSize = 14f
+            textSize = 12f
+            setPadding((8 * density).toInt(), (3 * density).toInt(), (8 * density).toInt(), (3 * density).toInt())
+            background = GradientDrawable().apply {
+                setColor(tagBg)
+                cornerRadius = 6 * density
+            }
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
+
+        val badgeView = TextView(this).apply {
+            text = badgeText
+            setTextColor(Color.parseColor("#94A3B8"))
+            textSize = 10f
+        }
+
+        topRow.addView(tagView)
+        topRow.addView(badgeView)
 
         val bodyView = TextView(this).apply {
             text = option.text
-            setTextColor(Color.parseColor("#333333"))
-            textSize = 13f
-            setPadding(0, (8 * density).toInt(), 0, (12 * density).toInt())
+            setTextColor(Color.parseColor("#334155"))
+            textSize = 12f
+            setLineSpacing(4f, 1.15f)
+            setPadding(0, (10 * density).toInt(), 0, (14 * density).toInt())
         }
 
         val copyBtn = Button(this).apply {
             text = "复制此话术并关闭"
             setTextColor(Color.WHITE)
-            textSize = 13f
+            textSize = 12f
+            paint.isFakeBoldText = true
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#1677FF"))
                 cornerRadius = 10 * density
@@ -441,7 +486,7 @@ class FloatingService : Service() {
             }
         }
 
-        card.addView(tagView)
+        card.addView(topRow)
         card.addView(bodyView)
         card.addView(copyBtn)
         return card
