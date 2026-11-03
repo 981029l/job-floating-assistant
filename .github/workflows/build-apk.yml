@@ -28,7 +28,10 @@ jobs:
           gradle-version: '8.7'
 
       - name: 赋予 gradlew 执行权限
-        run: chmod +x gradlew
+        run: |
+          if [ -f gradlew ]; then
+            chmod +x gradlew
+          fi
 
       - name: 执行编译 (assembleRelease)
         run: gradle assembleRelease --stacktrace
