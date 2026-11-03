@@ -26,7 +26,8 @@ class JobAccessibilityService : AccessibilityService() {
         data class SceneInspection(
             val mode: GenerationMode,
             val jdText: String,
-            val chatHistory: String
+            val chatHistory: String,
+            val latestMessage: String = ""
         )
 
         fun inspectCurrentScene(): SceneInspection {
@@ -81,18 +82,24 @@ class JobAccessibilityService : AccessibilityService() {
             }
 
             if (hasChatInput || hasReadStatus || hasUnreadOrDelivered) {
+                val historyCandidates = allTextLines.filter { it.length >= 8 && !it.startsWith("预览") }
+                val lastLine = historyCandidates.lastOrNull() ?: ""
+                val isHrReplied = historyCandidates.size >= 2 && !lastLine.contains("已读") && !lastLine.contains("送达")
+
                 val mode = when {
+                    isHrReplied -> GenerationMode.IN_DEPTH_CHAT
                     hasReadStatus -> GenerationMode.READ_UNREPLIED
                     hasUnreadOrDelivered -> GenerationMode.UNREAD_NUDGE
                     else -> GenerationMode.READ_UNREPLIED
                 }
-                val historyCandidates = allTextLines.filter { it.length >= 12 && !it.startsWith("预览") }
-                val chatHistory = historyCandidates.takeLast(2).joinToString("\n")
+
+                val chatHistory = historyCandidates.takeLast(4).joinToString("\n")
+                val latestMessage = if (isHrReplied) lastLine else (historyCandidates.lastOrNull() ?: "")
                 val jdText = if (lastExtractedJd.length >= 20) lastExtractedJd else allTextLines.joinToString("\n").take(300)
-                return SceneInspection(mode, jdText, chatHistory)
+                return SceneInspection(mode, jdText, chatHistory, latestMessage)
             } else {
                 val jd = captureCurrentScreenText()
-                return SceneInspection(GenerationMode.FIRST_ICEBREAK, jd, "")
+                return SceneInspection(GenerationMode.FIRST_ICEBREAK, jd, "", "")
             }
         }
 

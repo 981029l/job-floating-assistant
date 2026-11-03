@@ -220,7 +220,8 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
         context: Context,
         jdText: String,
         mode: GenerationMode = GenerationMode.FIRST_ICEBREAK,
-        chatHistory: String = ""
+        chatHistory: String = "",
+        latestMessage: String = ""
     ): Result<List<GreetingOption>> = withContext(Dispatchers.IO) {
         try {
             val apiKey = StorageManager.getApiKey(context)
@@ -239,7 +240,8 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
                     val promptContent = basePrompt
                         .replace("{{jdText}}", jdText.ifBlank { "（暂未识别到详细岗位JD，请基于通用岗位匹配度生成）" })
                         .replace("{{resume}}", resume.ifBlank { "（未录入完整简历）" })
-                        .replace("{{chatHistory}}", chatHistory.ifBlank { "（无历史打招呼记录，此前仅发起过初步破冰）" })
+                        .replace("{{chatHistory}}", chatHistory.ifBlank { "（此前双方已有初步沟通记录）" })
+                        .replace("{{latestMessage}}", latestMessage.ifBlank { "（对方已作出回复，请结合上下文推进面试转化）" })
                     put(JSONObject().apply {
                         put("role", "user")
                         put("content", promptContent)
@@ -305,6 +307,7 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
             GenerationMode.FIRST_ICEBREAK -> Pair("技术硬核型", "全面匹配型")
             GenerationMode.READ_UNREPLIED -> Pair("技术攻坚深化型", "业务成效赋能型")
             GenerationMode.UNREAD_NUDGE -> Pair("岗位价值补充型", "自然轻量触达型")
+            GenerationMode.IN_DEPTH_CHAT -> Pair("专业答复型", "面试推进型")
         }
 
         // 1. 优先按完整多行标题进行正则切分（容错各种标记如 ===风格一===、### 风格一、[风格一] 等）
@@ -344,7 +347,8 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
             return list
         }
 
-        list.add(GreetingOption("精选破冰语", cleaned))
+        val fallbackTitle = if (mode == GenerationMode.IN_DEPTH_CHAT) "面试转化回复" else "精选破冰语"
+        list.add(GreetingOption(fallbackTitle, cleaned))
         return list
     }
     suspend fun extractStructuredResume(context: Context, rawText: String): Result<StructuredResume> = withContext(Dispatchers.IO) {

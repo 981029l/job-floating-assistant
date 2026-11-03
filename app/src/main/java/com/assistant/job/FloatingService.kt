@@ -188,6 +188,7 @@ class FloatingService : Service() {
         val scene = JobAccessibilityService.inspectCurrentScene()
         var currentMode = scene.mode
         var currentChatHistory = scene.chatHistory
+        var currentLatestMsg = scene.latestMessage
         var currentJd = if (initialJd.length >= 20) initialJd else if (scene.jdText.length >= 20) scene.jdText else initialJd
 
         val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -289,7 +290,8 @@ class FloatingService : Service() {
         val modes = listOf(
             GenerationMode.FIRST_ICEBREAK,
             GenerationMode.READ_UNREPLIED,
-            GenerationMode.UNREAD_NUDGE
+            GenerationMode.UNREAD_NUDGE,
+            GenerationMode.IN_DEPTH_CHAT
         )
 
         fun updateTabStyles() {
@@ -577,22 +579,22 @@ class FloatingService : Service() {
         toggleBtn.setOnClickListener { toggleAction() }
         previewSnippet.setOnClickListener { toggleAction() }
 
-        // 组装 Tab 按钮点击事件
+        // 组装 Tab 按钮点击事件 (4档场景切换)
         modes.forEachIndexed { index, m ->
             val tabBtn = TextView(this).apply {
-                text = "${m.tabTitle} · ${m.badge}"
-                textSize = 11.5f
+                text = m.tabTitle
+                textSize = 11f
                 gravity = Gravity.CENTER
                 setPadding(0, (7 * density).toInt(), 0, (7 * density).toInt())
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                    if (index > 0) leftMargin = (5 * density).toInt()
+                    if (index > 0) leftMargin = (4 * density).toInt()
                 }
                 setOnClickListener {
                     if (currentMode != m) {
                         currentMode = m
                         updateTabStyles()
                         Toast.makeText(this@FloatingService, "切换模式: ${m.tabTitle} (${m.badge})", Toast.LENGTH_SHORT).show()
-                        triggerAiGeneration(contentContainer, currentJd, currentMode, currentChatHistory)
+                        triggerAiGeneration(contentContainer, currentJd, currentMode, currentChatHistory, currentLatestMsg)
                     }
                 }
             }
@@ -633,7 +635,7 @@ class FloatingService : Service() {
 
             currentJd = customJd
             Toast.makeText(this@FloatingService, "已应用最新 JD，正在为您生成匹配话术...", Toast.LENGTH_SHORT).show()
-            triggerAiGeneration(contentContainer, customJd, currentMode, currentChatHistory)
+            triggerAiGeneration(contentContainer, customJd, currentMode, currentChatHistory, currentLatestMsg)
         }
 
         // 底部提示栏
@@ -655,7 +657,7 @@ class FloatingService : Service() {
         }
 
         if (currentJd.length >= 15 || currentMode != GenerationMode.FIRST_ICEBREAK) {
-            triggerAiGeneration(contentContainer, currentJd, currentMode, currentChatHistory)
+            triggerAiGeneration(contentContainer, currentJd, currentMode, currentChatHistory, currentLatestMsg)
         } else {
             // 如果初次识别没有达到 20 字，在下方展示友好引导
             contentContainer.removeAllViews()
@@ -675,7 +677,8 @@ class FloatingService : Service() {
         container: LinearLayout,
         jdText: String,
         mode: GenerationMode = GenerationMode.FIRST_ICEBREAK,
-        chatHistory: String = ""
+        chatHistory: String = "",
+        latestMessage: String = ""
     ) {
         currentGenerationJob?.cancel()
         container.removeAllViews()
@@ -689,6 +692,7 @@ class FloatingService : Service() {
             GenerationMode.FIRST_ICEBREAK -> "深度解析岗位要求与简历匹配点"
             GenerationMode.READ_UNREPLIED -> "挖掘深水攻坚亮点，生成已读二度跟进"
             GenerationMode.UNREAD_NUDGE -> "提炼高密度通知抓手，生成未读触达"
+            GenerationMode.IN_DEPTH_CHAT -> "分析对方问题与关注点，生成面试转化回复"
         }
         val loadingText = TextView(this).apply {
             text = "正在${modeActionDesc}...\n（调用 $currentModel 极速生成中）"
@@ -702,7 +706,7 @@ class FloatingService : Service() {
         container.addView(loadingText)
 
         currentGenerationJob = serviceScope.launch {
-            val result = DeepSeekClient.generateGreetings(this@FloatingService, jdText, mode, chatHistory)
+            val result = DeepSeekClient.generateGreetings(this@FloatingService, jdText, mode, chatHistory, latestMessage)
             withContext(Dispatchers.Main) {
                 container.removeAllViews()
                 result.onSuccess { options ->
@@ -741,7 +745,7 @@ class FloatingService : Service() {
                             topMargin = (10 * density).toInt()
                         }
                         setOnClickListener {
-                            triggerAiGeneration(container, jdText, mode, chatHistory)
+                            triggerAiGeneration(container, jdText, mode, chatHistory, latestMessage)
                         }
                     }
                     errorCard.addView(errorView)
@@ -783,6 +787,7 @@ class FloatingService : Service() {
             GenerationMode.FIRST_ICEBREAK -> if (isHardcore) "技术攻坚" else "全面交流"
             GenerationMode.READ_UNREPLIED -> if (isHardcore) "攻坚深化" else "成效赋能"
             GenerationMode.UNREAD_NUDGE -> if (isHardcore) "价值补充" else "轻量触达"
+            GenerationMode.IN_DEPTH_CHAT -> if (isHardcore) "专业答复" else "推进面试"
         }
 
         val tagView = TextView(this).apply {

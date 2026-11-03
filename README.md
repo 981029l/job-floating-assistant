@@ -43,7 +43,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.2.3-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.3/JobAssistant-v1.2.3-debug.apk)
+- **最新正式版直链**：[JobAssistant-v1.2.4-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.4/JobAssistant-v1.2.4-debug.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -104,6 +104,10 @@ job-floating-assistant/
 
 ## 版本演进记录
 
+- **v1.2.4**：
+  - 全链路招聘沟通4档场景全覆盖：全新增加「深入沟通 · 面试转化」场景，针对招聘方已有回复的情境深度对线；
+  - 10大对话意图精准识别与面试推进：针对技术询问、项目经验、AI开发能力、薪资待遇、到岗时间及面试邀约生成高情商专业回复（50-150字）；
+  - 无障碍智能上下文链路：自动提取双方历史聊天记录（{{chatHistory}}）与招聘方最新一条消息（{{latestMessage}}），答其所问，消除顾虑，力推线下面试。
 - **v1.2.3**：
   - 无障碍聊天状态智能感知：自动探测是否处于招聘聊天页面，并精准感知「已读」或「未读/送达」状态；
   - 悬浮窗三档场景切换 Tab：新增「首次破冰 · 初次开聊」、「已读未回 · 二度攻坚」、「未读唤醒 · 轻量触达」分段选项卡，支持自动预选与手动即时切换；
