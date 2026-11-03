@@ -1,6 +1,6 @@
 {
-  "versionCode": 35,
-  "versionName": "1.3.5",
-  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.3.5/JobAssistant-v1.3.5.apk",
-  "releaseNotes": "1. 全自动开聊话筒免检级重磅升级：建立「先审 JD 诉求（事实源） -> 按需翻简历（储备池）」绝对单向心智推理，彻底根除因果倒错；\n2. 落地长板静默法则：目标 JD 未提及的领域（如未提 AI），候选人简历即使写得再亮眼也强制绝对静默，严禁在第一句无中生有；\n3. 落地【1+1 复合痛点对】与自适应变轨：鲜明 JD 打业务+技术复合痛点，平庸 JD 自动启动稳健防御姿态，守住职业体面，零翻车零出丑；\n4. 继承持久统一签名，支持应用内一键无缝覆盖升级。"
+  "versionCode": 36,
+  "versionName": "1.3.6",
+  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.3.6/JobAssistant-v1.3.6.apk",
+  "releaseNotes": "1. 彻底拔除所有具体行业案例（Zero-Shot 纯抽象化）：杜绝案例下毒与偏见污染，全面释放大模型深度逻辑推导潜力；\n2. 落地【业务载体 + 工程难关】纯抽象推导公式：严禁字面摘抄应试要求，以资深解题者姿态直击对方业务核心挑战；\n3. 全场景清理 AI 偏置诱导词：深入沟通、未读唤醒、已读未回全链路贯彻长板静默法则，只以目标 JD 为唯一准绳；\n4. 继承持久统一签名，支持应用内一键无缝覆盖升级。"
 }

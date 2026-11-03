@@ -41,7 +41,7 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.3.5.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.3.6.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -54,15 +54,15 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.3.5
-          name: "AI求职悬浮助手 v1.3.5 (免检级全自动开聊话筒/绝对单向心智推理/长板静默法则/1+1复合痛点)"
+          tag_name: v1.3.6
+          name: "AI求职悬浮助手 v1.3.6 (彻底拔除案例偏见/Zero-Shot纯抽象心智推导/业务载体+工程难关通用公式)"
           body: |
             AI 求职悬浮助手 v1.3.3 体验与检测机制重大修复：
             1. 修复版本号动态获取：彻底移除主界面写死的「v1.2.7」，动态读取系统 PackageManager 实际安装版本；
             2. 穿透 CDN 边缘缓存：更新检查机制加入时间戳动态参数与 Web 302 探针交叉核验，杜绝 CDN 缓存引起的「假无更新」；
             3. 全链路 8 维礼仪落地：提示词强约束 + 代码级后置自愈双保险，首轮主动开聊 100% 携带「您好」尊称开场，彻底清洗「贵司/贵公司」公文腔；
-            4. 纯净正式版 APK 发布（JobAssistant-v1.3.5.apk），继承固化签名无缝升级。
-          files: release_apk/JobAssistant-v1.3.5.apk
+            4. 纯净正式版 APK 发布（JobAssistant-v1.3.6.apk），继承固化签名无缝升级。
+          files: release_apk/JobAssistant-v1.3.6.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
