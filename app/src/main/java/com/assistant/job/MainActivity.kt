@@ -1,18 +1,24 @@
 package com.assistant.job
 
-import android.accessibilityservice.AccessibilityServiceInfo
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.view.accessibility.AccessibilityManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -22,9 +28,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -48,16 +58,72 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
 
     var overlayGranted by remember { mutableStateOf(checkOverlayPermission(context)) }
-    var accessibilityGranted by remember { mutableStateOf(checkAccessibilityPermission(context)) }
+    var accessibilityGranted by remember { mutableStateOf(JobAccessibilityService.isServiceEnabledInSystem(context)) }
     var floatingServiceRunning by remember { mutableStateOf(FloatingService.isRunning) }
 
     var apiKey by remember { mutableStateOf(StorageManager.getApiKey(context)) }
     var baseUrl by remember { mutableStateOf(StorageManager.getBaseUrl(context)) }
     var modelName by remember { mutableStateOf(StorageManager.getModel(context)) }
     var resumeContent by remember { mutableStateOf(StorageManager.getResume(context)) }
+
+    // 模型列表弹窗状态
+    var showModelDialog by remember { mutableStateOf(false) }
+    var isFetchingModels by remember { mutableStateOf(false) }
+    var fetchedModels by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    // 简历文件选择器 (PDF / Word / TXT)
+    var isParsingResume by remember { mutableStateOf(false) }
+    val resumePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            isParsingResume = true
+            scope.launch {
+                val result = ResumeParser.parseResumeUri(context, uri)
+                isParsingResume = false
+                result.onSuccess { parsedText ->
+                    resumeContent = parsedText
+                    StorageManager.saveResume(context, parsedText)
+                    val fileName = ResumeParser.getFileName(context, uri)
+                    Toast.makeText(context, "成功导入简历: $fileName (共 ${parsedText.length} 字)", Toast.LENGTH_LONG).show()
+                }.onFailure { err ->
+                    Toast.makeText(context, "解析失败: ${err.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    // Android 13+ 通知权限请求
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { _ -> }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
+    // 监听生命周期，从设置页面返回后自动刷新权限状态
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                overlayGranted = checkOverlayPermission(context)
+                accessibilityGranted = JobAccessibilityService.isServiceEnabledInSystem(context)
+                floatingServiceRunning = FloatingService.isRunning
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     val scrollState = rememberScrollState()
 
@@ -83,14 +149,14 @@ fun MainScreen() {
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "屏幕无障碍提取 JD · DeepSeek 定制招呼语 · 纯本地免服务器",
-                    color = Color.White.copy(alpha = 0.85f),
+                    text = "屏幕自动读屏提取 JD · 一键获取模型 · 支持上传 PDF 简历",
+                    color = Color.White.copy(alpha = 0.9f),
                     fontSize = 13.sp
                 )
             }
         }
 
-        // 权限检测卡片
+        // 1. 系统权限配置
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -98,7 +164,7 @@ fun MainScreen() {
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "📌 必要系统权限配置",
+                    text = "📌 权限与悬浮开关",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1F1F1F)
@@ -113,28 +179,26 @@ fun MainScreen() {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("1. 悬浮窗权限", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                         Text(
-                            if (overlayGranted) "已开启 ✅" else "未开启（用于显示屏幕侧边悬浮球）",
+                            if (overlayGranted) "已开启 ✅ (可正常弹出悬浮球)" else "未开启 ❌ (点击右侧去授权)",
                             fontSize = 12.sp,
                             color = if (overlayGranted) Color(0xFF52C41A) else Color(0xFFFF4D4F)
                         )
                     }
                     Button(
-                        onClick = {
-                            requestOverlayPermission(context)
-                        },
+                        onClick = { requestOverlayPermission(context) },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (overlayGranted) Color(0xFFE6F4FF) else Color(0xFF1677FF)
+                            containerColor = if (overlayGranted) Color(0xFFF6FFED) else Color(0xFF1677FF)
                         )
                     ) {
                         Text(
-                            if (overlayGranted) "去检查" else "去授权",
-                            color = if (overlayGranted) Color(0xFF1677FF) else Color.White,
+                            if (overlayGranted) "已授权" else "去开启",
+                            color = if (overlayGranted) Color(0xFF52C41A) else Color.White,
                             fontSize = 12.sp
                         )
                     }
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 // 无障碍权限
                 Row(
@@ -145,66 +209,69 @@ fun MainScreen() {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("2. 无障碍读屏服务", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                         Text(
-                            if (accessibilityGranted) "已开启 ✅" else "未开启（用于自动抓取 BOSS 的 JD）",
+                            if (accessibilityGranted) "已开启 ✅ (可在 BOSS 直聘秒级读屏)" else "未开启 ❌ (进入无障碍开启'求职助手')",
                             fontSize = 12.sp,
                             color = if (accessibilityGranted) Color(0xFF52C41A) else Color(0xFFFF4D4F)
                         )
                     }
                     Button(
-                        onClick = {
-                            requestAccessibilityPermission(context)
-                        },
+                        onClick = { requestAccessibilityPermission(context) },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (accessibilityGranted) Color(0xFFE6F4FF) else Color(0xFF1677FF)
+                            containerColor = if (accessibilityGranted) Color(0xFFF6FFED) else Color(0xFF1677FF)
                         )
                     ) {
                         Text(
-                            if (accessibilityGranted) "去检查" else "去开启",
-                            color = if (accessibilityGranted) Color(0xFF1677FF) else Color.White,
+                            if (accessibilityGranted) "已开启" else "去开启",
+                            color = if (accessibilityGranted) Color(0xFF52C41A) else Color.White,
                             fontSize = 12.sp
                         )
                     }
                 }
 
-                Divider()
+                HorizontalDivider()
 
-                // 启动悬浮窗服务
+                // 启动 / 关闭悬浮球
                 Button(
                     onClick = {
                         if (!checkOverlayPermission(context)) {
-                            Toast.makeText(context, "请先授予【悬浮窗权限】", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "请先点击上方按钮授予【悬浮窗权限】", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         val intent = Intent(context, FloatingService::class.java)
-                        if (floatingServiceRunning) {
-                            context.stopService(intent)
-                            floatingServiceRunning = false
-                        } else {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                context.startForegroundService(intent)
+                        try {
+                            if (floatingServiceRunning) {
+                                context.stopService(intent)
+                                floatingServiceRunning = false
+                                Toast.makeText(context, "悬浮球已关闭", Toast.LENGTH_SHORT).show()
                             } else {
-                                context.startService(intent)
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    context.startForegroundService(intent)
+                                } else {
+                                    context.startService(intent)
+                                }
+                                floatingServiceRunning = true
+                                Toast.makeText(context, "悬浮球已开启！请看屏幕边缘蓝色小球", Toast.LENGTH_SHORT).show()
                             }
-                            floatingServiceRunning = true
-                            Toast.makeText(context, "悬浮球已启动，请切换到 BOSS直聘 使用", Toast.LENGTH_SHORT).show()
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "启动服务失败: ${e.message}", Toast.LENGTH_LONG).show()
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (floatingServiceRunning) Color(0xFFFF4D4F) else Color(0xFF52C41A)
+                        containerColor = if (floatingServiceRunning) Color(0xFFFF4D4F) else Color(0xFF1677FF)
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        if (floatingServiceRunning) "⏹ 关闭悬浮球" else "▶ 启动悬浮球（开启后切去 BOSS 体验）",
-                        fontSize = 14.sp,
+                        if (floatingServiceRunning) "⏹ 关闭屏幕悬浮球" else "▶ 开启屏幕悬浮球",
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
         }
 
-        // 大模型配置
+        // 2. 大模型配置 (支持一键拉取模型列表)
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -212,7 +279,7 @@ fun MainScreen() {
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "⚙️ DeepSeek / 大模型 API 设置",
+                    text = "⚙️ 大模型 API 设置",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1F1F1F)
@@ -224,41 +291,90 @@ fun MainScreen() {
                         apiKey = it
                         StorageManager.saveApiKey(context, it)
                     },
-                    label = { Text("DeepSeek API Key (sk-...)") },
+                    label = { Text("API Key (sk-...)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
 
+                OutlinedTextField(
+                    value = baseUrl,
+                    onValueChange = {
+                        baseUrl = it
+                        StorageManager.saveBaseUrl(context, it)
+                    },
+                    label = { Text("Base URL 接口地址") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                // 模型选择行与获取模型按钮
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedTextField(
-                        value = baseUrl,
-                        onValueChange = {
-                            baseUrl = it
-                            StorageManager.saveBaseUrl(context, it)
-                        },
-                        label = { Text("接口地址 (Base URL)") },
-                        modifier = Modifier.weight(1.4f),
-                        singleLine = true
-                    )
-
                     OutlinedTextField(
                         value = modelName,
                         onValueChange = {
                             modelName = it
                             StorageManager.saveModel(context, it)
                         },
-                        label = { Text("模型名称") },
-                        modifier = Modifier.weight(1f),
+                        label = { Text("当前选择模型") },
+                        modifier = Modifier.weight(1.2f),
                         singleLine = true
                     )
+
+                    Button(
+                        onClick = {
+                            if (apiKey.isBlank()) {
+                                Toast.makeText(context, "请先填写 API Key！", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            isFetchingModels = true
+                            scope.launch {
+                                val result = DeepSeekClient.fetchModelList(context)
+                                isFetchingModels = false
+                                result.onSuccess { models ->
+                                    fetchedModels = models
+                                    showModelDialog = true
+                                }.onFailure { err ->
+                                    Toast.makeText(context, "拉取模型列表失败: ${err.message}", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF52C41A)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            if (isFetchingModels) "拉取中..." else "🔄 获取模型",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // 常用模型快捷标签
+                Text("快捷预设模型：", fontSize = 12.sp, color = Color.Gray)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf("deepseek-chat", "deepseek-reasoner", "qwen-turbo").forEach { m ->
+                        SuggestionChip(
+                            onClick = {
+                                modelName = m
+                                StorageManager.saveModel(context, m)
+                                Toast.makeText(context, "已切换为: $m", Toast.LENGTH_SHORT).show()
+                            },
+                            label = { Text(m, fontSize = 11.sp) }
+                        )
+                    }
                 }
             }
         }
 
-        // 简历管理配置
+        // 3. 简历管理 (支持上传 PDF / DOCX / TXT)
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -271,7 +387,7 @@ fun MainScreen() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "📝 我的简历核心亮点",
+                        text = "📝 我的简历内容",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1F1F1F)
@@ -279,14 +395,30 @@ fun MainScreen() {
                     TextButton(onClick = {
                         resumeContent = StorageManager.DEFAULT_RESUME
                         StorageManager.saveResume(context, StorageManager.DEFAULT_RESUME)
-                        Toast.makeText(context, "已重置为预设前端亮点简历", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "已恢复为预置前端简历亮点", Toast.LENGTH_SHORT).show()
                     }) {
-                        Text("恢复默认", fontSize = 12.sp)
+                        Text("恢复预设", fontSize = 12.sp)
                     }
                 }
 
+                // 上传简历文件按钮
+                Button(
+                    onClick = {
+                        resumePickerLauncher.launch("*/*")
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF722ED1)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        if (isParsingResume) "正在解析简历中..." else "📁 选择并上传简历文件 (PDF / Word / TXT)",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
                 Text(
-                    "AI 会以此简历内容与屏幕上的岗位 JD 做交集匹配：",
+                    "简历内容（已导入或在此手动修改）：",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
@@ -305,7 +437,7 @@ fun MainScreen() {
             }
         }
 
-        // 使用指南
+        // 使用指南卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBE6)),
@@ -313,24 +445,60 @@ fun MainScreen() {
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "💡 手机使用流程：",
+                    text = "💡 操作技巧：",
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     color = Color(0xFFD48806)
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "1. 填入您的 DeepSeek API Key 并点击启动悬浮球。\n" +
-                            "2. 打开【BOSS直聘】或【猎聘】进入任意岗位详情页。\n" +
-                            "3. 点击屏幕边缘的【AI招呼】蓝色悬浮球。\n" +
-                            "4. 悬浮窗自动识别 JD 并调取大模型生成 2 种打招呼风格。\n" +
-                            "5. 点击【复制此话术并关闭】，进入聊天框直接粘贴发送！",
-                    fontSize = 13.sp,
+                    text = "1. 点击【开启屏幕悬浮球】，屏幕左侧会出现【AI招呼】蓝色悬浮球。\n" +
+                            "2. 打开 BOSS直聘 进入任意岗位详情页，点击悬浮球即可自动读屏生成。\n" +
+                            "3. 若某机型限制读屏，点击悬浮球后可直接【粘贴剪贴板文字】生成，双重保障！",
+                    fontSize = 12.sp,
                     color = Color(0xFF595959),
-                    lineHeight = 20.sp
+                    lineHeight = 18.sp
                 )
             }
         }
+    }
+
+    // 模型选择弹窗
+    if (showModelDialog) {
+        AlertDialog(
+            onDismissRequest = { showModelDialog = false },
+            title = { Text("选择模型列表 (${fetchedModels.size} 个可用)") },
+            text = {
+                LazyColumn(modifier = Modifier.height(280.dp)) {
+                    items(fetchedModels) { m ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    modelName = m
+                                    StorageManager.saveModel(context, m)
+                                    showModelDialog = false
+                                    Toast.makeText(context, "已选择模型: $m", Toast.LENGTH_SHORT).show()
+                                }
+                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(m, fontSize = 14.sp, color = if (m == modelName) Color(0xFF1677FF) else Color.DarkGray)
+                            if (m == modelName) {
+                                Text("✓", color = Color(0xFF1677FF), fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        HorizontalDivider()
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showModelDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }
 
@@ -344,26 +512,24 @@ private fun checkOverlayPermission(context: Context): Boolean {
 
 private fun requestOverlayPermission(context: Context) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-        val intent = Intent(
-            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-            Uri.parse("package:${context.packageName}")
-        )
-        context.startActivity(intent)
-    }
-}
-
-private fun checkAccessibilityPermission(context: Context): Boolean {
-    val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
-    val enabledServices = am.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
-    for (service in enabledServices) {
-        if (service.resolveInfo.serviceInfo.packageName == context.packageName) {
-            return true
+        try {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:${context.packageName}")
+            )
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+            context.startActivity(intent)
         }
     }
-    return false
 }
 
 private fun requestAccessibilityPermission(context: Context) {
-    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-    context.startActivity(intent)
+    try {
+        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        Toast.makeText(context, "无法直接打开设置，请在系统设置中搜索'无障碍'并开启", Toast.LENGTH_LONG).show()
+    }
 }

@@ -21,6 +21,54 @@ object DeepSeekClient {
 
     private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
+    suspend fun fetchModelList(context: Context): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            val apiKey = StorageManager.getApiKey(context)
+            if (apiKey.isBlank()) {
+                return@withContext Result.failure(Exception("请先填写 API Key 再获取模型列表！"))
+            }
+
+            val baseUrl = StorageManager.getBaseUrl(context).trimEnd('/')
+            val endpoint = "$baseUrl/models"
+
+            val request = Request.Builder()
+                .url(endpoint)
+                .addHeader("Authorization", "Bearer $apiKey")
+                .get()
+                .build()
+
+            val response = client.newCall(request).execute()
+            val responseBody = response.body?.string() ?: ""
+
+            if (!response.isSuccessful) {
+                return@withContext Result.failure(Exception("获取模型列表失败 (${response.code}): $responseBody"))
+            }
+
+            val json = JSONObject(responseBody)
+            val dataArray = json.optJSONArray("data")
+            val models = mutableListOf<String>()
+
+            if (dataArray != null) {
+                for (i in 0 until dataArray.length()) {
+                    val item = dataArray.getJSONObject(i)
+                    val id = item.optString("id")
+                    if (id.isNotBlank()) {
+                        models.add(id)
+                    }
+                }
+            }
+
+            if (models.isEmpty()) {
+                // 如果为空，提供预设常用模型
+                models.addAll(listOf("deepseek-chat", "deepseek-reasoner", "qwen-turbo", "gpt-4o-mini"))
+            }
+
+            Result.success(models.sorted())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun generateGreetings(
         context: Context,
         jdText: String

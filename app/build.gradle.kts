@@ -63,4 +63,7 @@ dependencies {
     // 网络与异步协程
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
+
+    // PDF 简历文本解析
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 }

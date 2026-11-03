@@ -9,6 +9,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
@@ -19,6 +20,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -55,24 +57,32 @@ class FloatingService : Service() {
     }
 
     private fun startForegroundNotification() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "求职助手悬浮窗运行中",
-                NotificationManager.IMPORTANCE_LOW
-            )
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    CHANNEL_ID,
+                    "求职助手悬浮窗运行中",
+                    NotificationManager.IMPORTANCE_LOW
+                )
+                val manager = getSystemService(NotificationManager::class.java)
+                manager?.createNotificationChannel(channel)
+            }
+
+            val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("求职悬浮助手已就绪")
+                .setContentText("悬浮球已显示在屏幕侧边，点击即可针对当前岗位生成打招呼语")
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .build()
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(1001, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            } else {
+                startForeground(1001, notification)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-
-        val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("求职助手已就绪")
-            .setContentText("悬浮球已显示，点击即可针对当前岗位生成打招呼语")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
-
-        startForeground(1001, notification)
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -84,29 +94,33 @@ class FloatingService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
+        val density = resources.displayMetrics.density
+        val ballSize = (64 * density).toInt()
+
         val params = WindowManager.LayoutParams(
-            150,
-            150,
+            ballSize,
+            ballSize,
             layoutType,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             x = 20
-            y = 500
+            y = (resources.displayMetrics.heightPixels * 0.35).toInt()
         }
 
         val ballView = TextView(this).apply {
             text = "AI\n招呼"
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
-            textSize = 12f
+            textSize = 13f
+            paint.isFakeBoldText = true
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#1677FF")) // 科技蓝
-                setStroke(4, Color.WHITE)
+                setColor(Color.parseColor("#1677FF"))
+                setStroke((3 * density).toInt(), Color.WHITE)
             }
-            elevation = 16f
+            elevation = 20f
         }
 
         var initialX = 0
@@ -128,12 +142,14 @@ class FloatingService : Service() {
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (event.rawX - initialTouchX).toInt()
                     val dy = (event.rawY - initialTouchY).toInt()
-                    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                    if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
                         isClick = false
                     }
                     params.x = initialX + dx
                     params.y = initialY + dy
-                    windowManager.updateViewLayout(ballView, params)
+                    try {
+                        windowManager.updateViewLayout(ballView, params)
+                    } catch (_: Exception) {}
                     true
                 }
                 MotionEvent.ACTION_UP -> {
@@ -147,25 +163,20 @@ class FloatingService : Service() {
         }
 
         floatingBallView = ballView
-        windowManager.addView(ballView, params)
+        try {
+            windowManager.addView(ballView, params)
+            Toast.makeText(this, "悬浮球已显示在屏幕左侧，可随意拖动！", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "悬浮窗添加失败: ${e.message}，请确认已开启悬浮窗权限", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun onFloatingBallClicked() {
-        if (!JobAccessibilityService.isServiceRunning()) {
-            Toast.makeText(this, "请先在主界面开启【无障碍读取权限】！", Toast.LENGTH_LONG).show()
-            return
-        }
-
         val jdText = JobAccessibilityService.captureCurrentScreenText()
-        if (jdText.isBlank()) {
-            Toast.makeText(this, "未在当前屏幕提取到有效文字，请在岗位详情页再试", Toast.LENGTH_SHORT).show()
-            return
-        }
-
         showGenerationDialog(jdText)
     }
 
-    private fun showGenerationDialog(jdText: String) {
+    private fun showGenerationDialog(initialJd: String) {
         if (dialogOverlayView != null) {
             dismissDialog()
         }
@@ -178,8 +189,8 @@ class FloatingService : Service() {
         }
 
         val displayMetrics = resources.displayMetrics
-        val dialogWidth = (displayMetrics.widthPixels * 0.9).toInt()
-        val dialogHeight = (displayMetrics.heightPixels * 0.65).toInt()
+        val dialogWidth = (displayMetrics.widthPixels * 0.92).toInt()
+        val dialogHeight = (displayMetrics.heightPixels * 0.70).toInt()
 
         val params = WindowManager.LayoutParams(
             dialogWidth,
@@ -191,16 +202,18 @@ class FloatingService : Service() {
             gravity = Gravity.CENTER
         }
 
+        val density = resources.displayMetrics.density
+
         // 根容器
         val rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(36, 36, 36, 36)
+            setPadding((16 * density).toInt(), (16 * density).toInt(), (16 * density).toInt(), (16 * density).toInt())
             background = GradientDrawable().apply {
                 setColor(Color.WHITE)
-                cornerRadius = 32f
+                cornerRadius = 24 * density
                 setStroke(2, Color.parseColor("#E0E0E0"))
             }
-            elevation = 24f
+            elevation = 28f
         }
 
         // 顶栏（标题 + 关闭按钮）
@@ -209,15 +222,15 @@ class FloatingService : Service() {
             gravity = Gravity.CENTER_VERTICAL
         }
         val titleView = TextView(this).apply {
-            text = "🤖 AI 针对当前 JD 定制招呼语"
-            textSize = 16f
+            text = "🤖 AI 定制招呼语"
+            textSize = 17f
             setTextColor(Color.parseColor("#1F1F1F"))
             paint.isFakeBoldText = true
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
         val closeBtn = Button(this).apply {
             text = "✕"
-            textSize = 14f
+            textSize = 16f
             setTextColor(Color.GRAY)
             setBackgroundColor(Color.TRANSPARENT)
             setOnClickListener { dismissDialog() }
@@ -226,7 +239,7 @@ class FloatingService : Service() {
         headerLayout.addView(closeBtn)
         rootLayout.addView(headerLayout)
 
-        // 中间滚动区域
+        // 滚动内容容器
         val scrollView = ScrollView(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -236,64 +249,165 @@ class FloatingService : Service() {
         }
         val contentContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, 16, 0, 16)
+            setPadding(0, (8 * density).toInt(), 0, (8 * density).toInt())
         }
         scrollView.addView(contentContainer)
         rootLayout.addView(scrollView)
 
-        // 初始加载状态
+        dialogOverlayView = rootLayout
+        try {
+            windowManager.addView(rootLayout, params)
+        } catch (e: Exception) {
+            Toast.makeText(this, "弹窗失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (initialJd.length >= 20) {
+            triggerAiGeneration(contentContainer, initialJd)
+        } else {
+            // 如果自动读屏由于权限或厂商屏蔽未读到内容，显示手动输入/粘贴面板
+            showManualJdInput(contentContainer)
+        }
+    }
+
+    private fun showManualJdInput(container: LinearLayout) {
+        container.removeAllViews()
+        val density = resources.displayMetrics.density
+
+        val tipText = TextView(this).apply {
+            text = "⚠️ 未能通过无障碍自动读到屏幕 JD。\n您可直接点击下方【粘贴剪贴板文字】快速生成："
+            setTextColor(Color.parseColor("#D48806"))
+            textSize = 13f
+            setPadding(0, 0, 0, (8 * density).toInt())
+        }
+
+        val jdInput = EditText(this).apply {
+            hint = "此处长按粘贴当前岗位的职责或任职要求..."
+            textSize = 13f
+            setTextColor(Color.DKGRAY)
+            minLines = 4
+            maxLines = 6
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#F5F5F5"))
+                cornerRadius = 12 * density
+                setStroke(1, Color.LTGRAY)
+            }
+            setPadding((12 * density).toInt(), (12 * density).toInt(), (12 * density).toInt(), (12 * density).toInt())
+        }
+
+        val btnLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, (12 * density).toInt(), 0, 0)
+        }
+
+        val pasteBtn = Button(this).apply {
+            text = "📋 粘贴剪贴板"
+            textSize = 12f
+            setTextColor(Color.parseColor("#1677FF"))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#E6F4FF"))
+                cornerRadius = 10 * density
+            }
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                rightMargin = (8 * density).toInt()
+            }
+            setOnClickListener {
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = clipboard.primaryClip
+                if (clip != null && clip.itemCount > 0) {
+                    val text = clip.getItemAt(0).text?.toString() ?: ""
+                    jdInput.setText(text)
+                } else {
+                    Toast.makeText(this@FloatingService, "剪贴板为空", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+        val generateBtn = Button(this).apply {
+            text = "🚀 立即生成"
+            textSize = 13f
+            setTextColor(Color.WHITE)
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#1677FF"))
+                cornerRadius = 10 * density
+            }
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.2f)
+            setOnClickListener {
+                val input = jdInput.text.toString().trim()
+                if (input.length < 10) {
+                    Toast.makeText(this@FloatingService, "请先输入或粘贴至少 10 个字的岗位 JD", Toast.LENGTH_SHORT).show()
+                } else {
+                    triggerAiGeneration(container, input)
+                }
+            }
+        }
+
+        btnLayout.addView(pasteBtn)
+        btnLayout.addView(generateBtn)
+
+        container.addView(tipText)
+        container.addView(jdInput)
+        container.addView(btnLayout)
+    }
+
+    private fun triggerAiGeneration(container: LinearLayout, jdText: String) {
+        container.removeAllViews()
+        val density = resources.displayMetrics.density
+
         val progressBar = ProgressBar(this).apply {
             isIndeterminate = true
         }
         val loadingText = TextView(this).apply {
-            text = "正在深度匹配您的简历与当前岗位 JD...\n（调用 DeepSeek 极速生成中）"
+            text = "正在深度匹配您的简历与岗位 JD...\n（调用 DeepSeek 极速生成中）"
             setTextColor(Color.DKGRAY)
             textSize = 14f
             gravity = Gravity.CENTER
-            setPadding(0, 24, 0, 0)
+            setPadding(0, (16 * density).toInt(), 0, 0)
         }
-        contentContainer.addView(progressBar)
-        contentContainer.addView(loadingText)
+        container.addView(progressBar)
+        container.addView(loadingText)
 
-        dialogOverlayView = rootLayout
-        windowManager.addView(rootLayout, params)
-
-        // 异步请求 DeepSeek API
         serviceScope.launch {
             val result = DeepSeekClient.generateGreetings(this@FloatingService, jdText)
             withContext(Dispatchers.Main) {
-                contentContainer.removeAllViews()
+                container.removeAllViews()
                 result.onSuccess { options ->
                     options.forEach { option ->
                         val card = createOptionCard(option)
-                        contentContainer.addView(card)
+                        container.addView(card)
                     }
                 }.onFailure { err ->
                     val errorView = TextView(this@FloatingService).apply {
-                        text = "生成失败：${err.localizedMessage}\n\n请检查设置中的 API Key 或网络连通性。"
+                        text = "生成失败：${err.localizedMessage}\n\n请检查主界面中的 API Key、模型名称或网络连接。"
                         setTextColor(Color.RED)
                         textSize = 14f
                     }
-                    contentContainer.addView(errorView)
+                    val retryBtn = Button(this@FloatingService).apply {
+                        text = "重试 / 手动输入"
+                        setOnClickListener { showManualJdInput(container) }
+                    }
+                    container.addView(errorView)
+                    container.addView(retryBtn)
                 }
             }
         }
     }
 
     private fun createOptionCard(option: GreetingOption): View {
+        val density = resources.displayMetrics.density
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(24, 24, 24, 24)
+            setPadding((14 * density).toInt(), (14 * density).toInt(), (14 * density).toInt(), (14 * density).toInt())
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#F8F9FA"))
-                cornerRadius = 16f
+                cornerRadius = 14 * density
                 setStroke(2, Color.parseColor("#E9ECEF"))
             }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = 24
+                bottomMargin = (16 * density).toInt()
             }
         }
 
@@ -308,7 +422,7 @@ class FloatingService : Service() {
             text = option.text
             setTextColor(Color.parseColor("#333333"))
             textSize = 13f
-            setPadding(0, 12, 0, 16)
+            setPadding(0, (8 * density).toInt(), 0, (12 * density).toInt())
         }
 
         val copyBtn = Button(this).apply {
@@ -317,7 +431,7 @@ class FloatingService : Service() {
             textSize = 13f
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#1677FF"))
-                cornerRadius = 12f
+                cornerRadius = 10 * density
             }
             setOnClickListener {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
