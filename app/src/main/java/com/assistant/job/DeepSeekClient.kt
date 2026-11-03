@@ -409,7 +409,36 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
 
         val fallbackTitle = if (mode == GenerationMode.IN_DEPTH_CHAT) "面试转化回复" else "精选破冰语"
         list.add(GreetingOption(fallbackTitle, cleaned))
-        return list
+        return list.map { it.copy(text = sanitizeGreetingText(it.text, mode)) }
+    }
+
+    private fun sanitizeGreetingText(text: String, mode: GenerationMode): String {
+        var result = text.trim()
+        if (result.isBlank()) return result
+
+        if (result.startsWith("**") && result.endsWith("**") && result.length > 4) {
+            result = result.substring(2, result.length - 2).trim()
+        }
+
+        // 彻底根除公文腔、生硬书面化字眼
+        result = result
+            .replace("贵司高级", "看到高级")
+            .replace("贵司", "看到")
+            .replace("贵公司", "看到")
+            .replace("尊敬的招聘负责人", "您好")
+            .replace("尊敬的HR", "您好")
+            .replace("尊敬的面试官", "您好")
+            .replace("看到看到", "看到")
+
+        // 首次破冰若首句缺失礼貌尊称，自动补全「您好，」
+        if (mode == GenerationMode.FIRST_ICEBREAK) {
+            val hasGreeting = result.startsWith("您好") || result.startsWith("你好")
+            if (!hasGreeting) {
+                result = "您好，$result"
+            }
+        }
+
+        return result
     }
     suspend fun extractStructuredResume(context: Context, rawText: String): Result<StructuredResume> = withContext(Dispatchers.IO) {
         try {

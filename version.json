@@ -1,6 +1,6 @@
 {
-  "versionCode": 32,
-  "versionName": "1.3.2",
-  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.3.2/JobAssistant-v1.3.2.apk",
-  "releaseNotes": "1. 全链路沟通礼仪与开场规范重磅升级：统一注入 8 维职场即时沟通规范，首轮主动开聊自然带「您好」礼貌开场，消除冰冷机器感；\n2. 智能区分单轮与多轮：多轮对话不重复机械「您好」，回答 HR 具体问题直给干脆；\n3. 杜绝书面化公文腔：全面摒弃「贵司」「贵公司」等生硬词汇，更像真实高水平求职者；\n4. 纯净正式版发布，继承统一签名一键无缝覆盖升级。"
+  "versionCode": 33,
+  "versionName": "1.3.3",
+  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.3.3/JobAssistant-v1.3.3.apk",
+  "releaseNotes": "1. 彻底解决界面硬编码版本问题：动态精确读取当前安装版本，彻底告别误显 v1.2.7；\n2. 升级更新检测核心架构：加入 CDN 时间戳防缓存穿透与网页 302 探针二次交叉核实，彻底杜绝 CDN 缓存导致的「假最新版本」；\n3. 全链路 8 维职场沟通礼仪规范与自愈机制：首轮破冰百分之百带「您好」礼貌开场，代码级与提示词级双重彻底杜绝「贵司/贵公司」公文腔；\n4. 正式版发布，继承统一签名一键无缝覆盖升级。"
 }

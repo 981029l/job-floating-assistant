@@ -115,6 +115,7 @@ object StorageManager {
 - 每段开头应尽可能突出最有价值的匹配亮点。
 - 避免大段技术名词堆砌。
 - 首次主动破冰统一使用「您好」礼貌开场，随后立刻切入个人核心优势与岗位契合点，严禁大段冗长客套。
+- 严禁使用「贵司」「贵公司」「尊敬的招聘负责人」等公文腔、生硬书面化词汇，也不使用「亲」「老板」等轻浮称呼。必须以「您好」开场，直接从岗位关注的技术要点切入，像真实资深工程师在即时通讯中自信自然地交流（例如：「您好，看到该前端岗重视 Vue/React 与性能优化，我有 7 年研发经验...」）。
 - 不要使用空洞的自我评价。
 - 适合 BOSS直聘、猎聘等招聘平台直接复制发送。
 
@@ -587,7 +588,10 @@ HR 已经收到候选人简历，并明确表示将简历转交给技术人员�
 
     fun getCustomPrompt(context: Context): String {
         val prompt = getPrefs(context).getString(KEY_PROMPT, "")
-        if (prompt.isNullOrBlank() || prompt.startsWith("你是一位顶尖的技术求职顾问与技术专家。")) {
+        if (prompt.isNullOrBlank() || 
+            prompt.startsWith("你是一位顶尖的技术求职顾问与技术专家。") || 
+            !prompt.contains("首次主动破冰统一使用「您好」礼貌开场")
+        ) {
             return DEFAULT_SYSTEM_PROMPT
         }
         return prompt

@@ -30,7 +30,7 @@ data class UpdateInfo(
 object UpdateManager {
     // 通道 1: 全球 CDN 静态 version.json (首选, 永久零频控, 移动端延迟 < 50ms)
     private const val CDN_VERSION_JSON_URL =
-        "https://fastly.jsdelivr.net/gh/981029l/job-floating-assistant@main/version.json"
+        "https://cdn.jsdelivr.net/gh/981029l/job-floating-assistant@main/version.json"
     private const val RAW_VERSION_JSON_URL =
         "https://raw.githubusercontent.com/981029l/job-floating-assistant/main/version.json"
 
@@ -57,28 +57,42 @@ object UpdateManager {
     suspend fun checkForUpdate(context: Context): Result<UpdateInfo> = withContext(Dispatchers.IO) {
         val currentVersion = getCurrentVersionName(context)
 
-        // 1. 优先尝试通道 1: jsDelivr 全球加速 CDN (彻底免疫 403)
+        // 1. 优先尝试通道 1: jsDelivr 全球加速 CDN (彻底免疫 403，时间戳穿透缓存)
         val cdnResult = checkViaVersionJson(CDN_VERSION_JSON_URL, currentVersion)
-        if (cdnResult.isSuccess) {
+        if (cdnResult.isSuccess && cdnResult.getOrNull()?.hasUpdate == true) {
             return@withContext cdnResult
         }
 
         // 备用通道 1b: Raw GitHub version.json
         val rawResult = checkViaVersionJson(RAW_VERSION_JSON_URL, currentVersion)
-        if (rawResult.isSuccess) {
+        if (rawResult.isSuccess && rawResult.getOrNull()?.hasUpdate == true) {
             return@withContext rawResult
         }
 
-        // 2. 尝试通道 2: 网页 302 重定向探针 (读取 HTTP 302 Location Header)
+        // 2. 尝试通道 2: 网页 302 重定向探针 (读取 HTTP 302 Location Header，官方服务器零缓存零频控)
         val probeResult = checkViaWebRedirect(GITHUB_WEB_LATEST_RELEASE, currentVersion)
-        if (probeResult.isSuccess) {
-            return@withContext probeResult
+        if (probeResult.isSuccess && probeResult.getOrNull()?.hasUpdate == true) {
+            val probeInfo = probeResult.getOrNull()!!
+            val bestNotes = cdnResult.getOrNull()?.releaseNotes
+                ?: rawResult.getOrNull()?.releaseNotes
+                ?: probeInfo.releaseNotes
+            return@withContext Result.success(probeInfo.copy(releaseNotes = bestNotes))
         }
 
-        // 3. 尝试通道 3: 官方 REST API
+        // 3. 尝试通道 3: 官方 REST API (最后防线)
         val apiResult = checkViaGithubApi(GITHUB_LATEST_RELEASE_API, currentVersion)
-        if (apiResult.isSuccess) {
+        if (apiResult.isSuccess && apiResult.getOrNull()?.hasUpdate == true) {
             return@withContext apiResult
+        }
+
+        // 4. 若所有连通通道均判定无需升级，则返回权威无更新信息 (hasUpdate = false)
+        val latestConfirmed = probeResult.getOrNull()
+            ?: cdnResult.getOrNull()
+            ?: rawResult.getOrNull()
+            ?: apiResult.getOrNull()
+
+        if (latestConfirmed != null) {
+            return@withContext Result.success(latestConfirmed.copy(hasUpdate = false))
         }
 
         val lastErr = cdnResult.exceptionOrNull() ?: probeResult.exceptionOrNull() ?: apiResult.exceptionOrNull()
@@ -87,9 +101,16 @@ object UpdateManager {
 
     private fun checkViaVersionJson(url: String, currentVersion: String): Result<UpdateInfo> {
         try {
+            val cacheBusterUrl = if (url.contains("?")) {
+                "$url&_t=${System.currentTimeMillis()}"
+            } else {
+                "$url?_t=${System.currentTimeMillis()}"
+            }
             val req = Request.Builder()
-                .url(url)
+                .url(cacheBusterUrl)
                 .addHeader("User-Agent", "JobAssistant-Android")
+                .addHeader("Cache-Control", "no-cache, no-store, must-revalidate")
+                .addHeader("Pragma", "no-cache")
                 .get()
                 .build()
             val resp = httpClient.newCall(req).execute()

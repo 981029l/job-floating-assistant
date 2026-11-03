@@ -41,7 +41,7 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.3.2.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.3.3.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -54,17 +54,21 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.3.2
-          name: "AI求职悬浮助手 v1.3.2 (全链路注入8维沟通礼仪规范/尊称开场与多轮自适应/纯净正式版APK)"
+          tag_name: v1.3.3
+          name: "AI求职悬浮助手 v1.3.3 (修复版本号动态读取/穿透CDN缓存/首轮必定您好开场/彻底消除贵司公文腔)"
           body: |
-            AI 求职悬浮助手 v1.3.2 人文礼貌与情商重大升级：
-            1. 全场景接入【8 维沟通礼仪与开场规范】：
-               - 首次主动破冰：原则上使用「您好」礼貌开场，随后秒入核心硬核优势，兼具教养与技术深度；
-               - 区分首轮与多轮：已建立聊天的场景严禁机械重复「您好」，自然承接上一轮对话；
-               - 回答具体问题：优先直接回答 HR 提出的问题，不画蛇添足；
-               - 去书面化与网购腔：杜绝「贵司」「贵公司」等公文腔，禁用「亲/老板/大佬」等随意词汇，极度贴合真实优秀求职者语气。
-            2. 纯净生产版发布（JobAssistant-v1.3.2.apk），继承固化签名，覆盖安装数据 100% 完整保留。
-          files: release_apk/JobAssistant-v1.3.2.apk
+            AI 求职悬浮助手 v1.3.3 体验与检测机制重大修复：
+            1. 修复版本号动态获取：彻底移除主界面写死的「v1.2.7」，动态读取系统 PackageManager 实际安装版本；
+            2. 穿透 CDN 边缘缓存：更新检查机制加入时间戳动态参数与 Web 302 探针交叉核验，杜绝 CDN 缓存引起的「假无更新」；
+            3. 全链路 8 维礼仪落地：提示词强约束 + 代码级后置自愈双保险，首轮主动开聊 100% 携带「您好」尊称开场，彻底清洗「贵司/贵公司」公文腔；
+            4. 纯净正式版 APK 发布（JobAssistant-v1.3.3.apk），继承固化签名无缝升级。
+          files: release_apk/JobAssistant-v1.3.3.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 自动刷新 jsDelivr 全球 CDN 缓存
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Purging jsDelivr CDN cache for version.json..."
+          curl -s https://purge.jsdelivr.net/gh/981029l/job-floating-assistant@main/version.json || true
 

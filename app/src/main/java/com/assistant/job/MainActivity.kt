@@ -3019,13 +3019,27 @@ fun SettingsTab(
                     }
                 }
 
+                val currentInstalledVersion = remember {
+                    try {
+                        val pInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+                        } else {
+                            @Suppress("DEPRECATION")
+                            context.packageManager.getPackageInfo(context.packageName, 0)
+                        }
+                        pInfo.versionName ?: "1.3.3"
+                    } catch (e: Exception) {
+                        "1.3.3"
+                    }
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "当前安装版本：v1.2.7",
+                        text = "当前安装版本：v$currentInstalledVersion",
                         fontSize = 12.sp,
                         color = Color(0xFF334155),
                         fontWeight = FontWeight.Medium
