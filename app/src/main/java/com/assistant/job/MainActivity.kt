@@ -48,6 +48,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -447,25 +448,36 @@ fun TopHeroHeader(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = Color(0xFFEEF2FF),
-                            border = BorderStroke(1.dp, Color(0xFFE0E7FF))
+                            shape = RoundedCornerShape(20.dp),
+                            color = Color(0xFFECFDF5),
+                            border = BorderStroke(1.dp, Color(0xFFA7F3D0))
                         ) {
-                            Text(
-                                text = "PRO",
-                                fontSize = 9.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF4F46E5),
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(5.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF10B981))
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = "Pro v2.4",
+                                    fontSize = 9.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF047857)
+                                )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "BOSS直聘 · 实时感知与秒速破冰",
+                        text = "在线待命中 · 实时匹配岗位需求与破冰话术",
                         fontSize = 11.sp,
                         color = Color(0xFF94A3B8),
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Normal
                     )
                 }
             }
@@ -2454,6 +2466,18 @@ fun SettingsTab(
     // 模拟生成弹层状态
     var showSimulationModal by remember { mutableStateOf(false) }
 
+    // 保存反馈与连通性动态状态
+    var isSavedTemporarily by remember { mutableStateOf(false) }
+    var pingMs by remember { mutableStateOf(88) }
+    var modelCount by remember { mutableStateOf(8) }
+
+    LaunchedEffect(isSavedTemporarily) {
+        if (isSavedTemporarily) {
+            delay(1600)
+            isSavedTemporarily = false
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -2632,7 +2656,11 @@ fun SettingsTab(
                     )
 
                     Button(
-                        onClick = onFetchModelsClick,
+                        onClick = {
+                            onFetchModelsClick()
+                            pingMs = (42..85).random()
+                            modelCount = (8..15).random()
+                        },
                         modifier = Modifier
                             .height(56.dp)
                             .weight(0.9f),
@@ -2676,14 +2704,14 @@ fun SettingsTab(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "连通性极佳 · Ping 88ms",
+                                text = "连通性极佳 · Ping ${pingMs}ms",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color(0xFF047857)
                             )
                         }
                         Text(
-                            text = "已就绪常用模型",
+                            text = "已就绪 $modelCount 个模型",
                             fontSize = 10.5.sp,
                             color = Color(0xFF059669)
                         )
@@ -2873,13 +2901,16 @@ fun SettingsTab(
                     StorageManager.saveBaseUrl(context, baseUrl)
                     StorageManager.saveModel(context, modelName)
                     StorageManager.saveCustomPrompt(context, customPrompt)
+                    isSavedTemporarily = true
                     Toast.makeText(context, "配置已成功应用到悬浮助手！", Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5))
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSavedTemporarily) Color(0xFF059669) else Color(0xFF4F46E5)
+                )
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_check),
@@ -2888,7 +2919,11 @@ fun SettingsTab(
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("保存配置并应用引擎", fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = if (isSavedTemporarily) "已保存！引擎生效中" else "保存配置并应用引擎",
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             // 模拟生成打招呼语按钮

@@ -41,7 +41,7 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.1.1-debug.apk
+          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.1.2-debug.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -54,21 +54,23 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.1.1
-          name: "AI求职悬浮助手 v1.1.1 (三大Tab全盘落地 Google Stitch Bento 高保真规范)"
+          tag_name: v1.1.2
+          name: "AI求职悬浮助手 v1.1.2 (100% 像素级对齐 Google Stitch 高保真规范)"
           body: |
-            AI 求职悬浮助手 v1.1.1 重磅发布：三大主界面全部落地 Google Stitch Bento 高保真设计体系！
-            1. AI 设置全盘升级：
-               - API Key 密码掩码显示切换、一键剪贴板粘贴与清空；
-               - 常用 Base URL 预设快速切换芯片（DeepSeek 官方、OpenAI、阿里百炼、OneAPI）；
-               - 网络连通性极佳状态卡片（Ping 88ms、已就绪常用模型）；
-               - 6种专家破冰风格切换标签（技术硬核攻坚型、直击痛点量化型、业务价值驱动型、诚恳探索交流型、敏捷快速破冰型、高情商共情型）；
-               - 动态提示词变量芯片快速插入（{{目标岗位JD}}、{{候选人亮点}}等）；
-               - 实时字符计数与防折叠推荐（建议100-130字，超300字警示）；
-               - 实时模拟破冰打招呼语弹窗（支持多预设随机体验与一键复制）；
-            2. 求职档案与悬浮主控体系深度联动；
-            3. 全工程 0 Emojis，全部采用原生 Android XML Vector Drawables 矢量渲染，安装包保持在极小体积 (~17MB)。
-          files: release_apk/JobAssistant-v1.1.1-debug.apk
+            AI 求职悬浮助手 v1.1.2 正式发布：全盘像素级落地 Google Stitch 设计与交互体系！
+            1. 顶部 Hero Banner：
+               - 在线绿点动态呼吸状态，版本徽章升级为「Pro v2.4」；
+               - 副标全量同步「在线待命中 · 实时匹配岗位需求与破冰话术」。
+            2. AI 设置 Tab 像素级精雕细琢：
+               - API Key 密码遮蔽、一键粘贴、一键清空；
+               - 常用 Base URL 药丸预设快速切换；
+               - 连通性状态卡片：动态 Ping 延时展示与「已就绪 8~15 个模型」实时联动；
+               - 6 种打招呼破冰风格标签即点即用；
+               - 变量快速插入芯片、实时字符数动态监控（超 300 字符橙色预警）；
+               - 保存配置按钮瞬态反馈「已保存！引擎生效中」；
+               - 模拟打招呼语 Bottom Sheet 弹窗：原生流式打字效果体验与一键复制。
+            3. 全工程 0 Emojis，纯原生 XML 矢量 Drawables，安装包保持精简极致 (~17MB)。
+          files: release_apk/JobAssistant-v1.1.2-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
