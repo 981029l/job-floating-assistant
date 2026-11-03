@@ -3,8 +3,6 @@ name: Build Android APK
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
 
 permissions:
@@ -15,33 +13,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 检出源码
+      - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 配置 Java 17 环境
+      - name: 设置 Java 17 环境
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 自动配置 Gradle 8.7
+      - name: 自动化配置 Gradle 8.7
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.7'
 
       - name: 赋予 gradlew 执行权限
-        run: |
-          if [ -f gradlew ]; then
-            chmod +x gradlew
-          fi
+        run: chmod +x gradlew
 
-      - name: 执行编译打包 (assembleRelease)
+      - name: 执行编译 (assembleRelease)
         run: gradle assembleRelease --stacktrace
 
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.3.6.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.3.7.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -50,19 +45,19 @@ jobs:
           path: release_apk/*.apk
           retention-days: 30
 
-      - name: 自动发布到 GitHub Releases
+      - name: 发布至 GitHub Releases
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.3.6
-          name: "AI求职悬浮助手 v1.3.6 (彻底拔除案例偏见/Zero-Shot纯抽象心智推导/业务载体+工程难关通用公式)"
+          tag_name: v1.3.7
+          name: "AI求职助手 v1.3.7 (破除油腻套路/平视三段式/严禁反问卡点/防伪造指标)"
           body: |
-            AI 求职悬浮助手 v1.3.3 体验与检测机制重大修复：
-            1. 修复版本号动态获取：彻底移除主界面写死的「v1.2.7」，动态读取系统 PackageManager 实际安装版本；
-            2. 穿透 CDN 边缘缓存：更新检查机制加入时间戳动态参数与 Web 302 探针交叉核验，杜绝 CDN 缓存引起的「假无更新」；
-            3. 全链路 8 维礼仪落地：提示词强约束 + 代码级后置自愈双保险，首轮主动开聊 100% 携带「您好」尊称开场，彻底清洗「贵司/贵公司」公文腔；
-            4. 纯净正式版 APK 发布（JobAssistant-v1.3.6.apk），继承固化签名无缝升级。
-          files: release_apk/JobAssistant-v1.3.6.apk
+            AI 求职助手 v1.3.7 重大更新说明：
+            1. 彻底根治油腻咨询病与虚假奉承：全面砸碎「很高标准」与反客为主质问卡点的假大空模板，重回真人平视姿态；
+            2. 落地【平视三段式】严苛字数卡尺：开场(15-25字)平实接住真实业务，佐证(30-40字)证明即插即用同款经历，收尾(15-25字)自然表达同行意愿；
+            3. 铁律一票否决防翻车：严禁反问对方性能卡点与技术瓶颈，无数据时严禁凭空捏造压降与并发伪指标；
+            4. 正式产物 APK 名：JobAssistant-v1.3.7.apk（继承统一签名，无缝覆盖升级）。
+          files: release_apk/JobAssistant-v1.3.7.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -71,4 +66,3 @@ jobs:
         run: |
           echo "Purging jsDelivr CDN cache for version.json..."
           curl -s https://purge.jsdelivr.net/gh/981029l/job-floating-assistant@main/version.json || true
-
