@@ -7,7 +7,7 @@
 
 ## 核心特性
 
-- **大模型简历全案结构化解析（v1.1.8）**：
+- **大模型简历全案结构化解析（v1.1.9）**：
   支持导入 PDF、Word (.docx)、纯文本简历或在输入框中直接粘贴原始正文。调用大模型智能提炼，自动一键解析并回填：
   - **求职意向**：目标岗位名称、期望薪资与目标城市；
   - **核心工作经历**：精炼浓缩 2-3 条主导项目与技术攻坚成效亮点；
@@ -43,7 +43,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.1.8-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.1.8/JobAssistant-v1.1.8-debug.apk)
+- **最新正式版直链**：[JobAssistant-v1.1.9-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.1.9/JobAssistant-v1.1.9-debug.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -104,7 +104,7 @@ job-floating-assistant/
 
 ## 版本演进记录
 
-- **v1.1.8**：
+- **v1.1.9**：
   - 核心新增大模型简历全案结构化提取功能，支持文件导入或文本粘贴后一键自动填充意向岗位、期望薪资城市与核心经历；
   - 响应式同步各卡片状态；
   - 移除顶部 Header 挤压冗余的版本号胶囊，提升顶栏布局舒适度。
