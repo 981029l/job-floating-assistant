@@ -1,0 +1,6 @@
+{
+  "versionCode": 31,
+  "versionName": "1.3.1",
+  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.3.1/JobAssistant-v1.3.1.apk",
+  "releaseNotes": "1. 彻底解决检查更新 403 频控问题：接入 jsDelivr 全球高速 CDN 与网页 302 重定向探针，更新检测零延迟、零频控；\n2. 职位特征与 JD 记忆池：在 BOSS 聊天页自动秒级关联命中对应完整岗位职责；\n3. 模拟面试考点押题专区：主应用新增 4 维高频考点预测与 STAR 回答策略；\n4. 正式版 APK 纯净发布，彻底去除 -debug 后缀。"
+}

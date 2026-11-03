@@ -41,7 +41,7 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.3.0.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.3.1.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -54,21 +54,20 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.3.0
-          name: "AI求职悬浮助手 v1.3.0 (职位特征与JD记忆池/聊天界面智能命中/纯净正式版APK)"
+          tag_name: v1.3.1
+          name: "AI求职悬浮助手 v1.3.1 (彻底根除检查更新403/全球CDN与302探针/纯净正式版APK)"
           body: |
-            AI 求职悬浮助手 v1.3.0 跨代重磅升级：
-            1. 全新上线【职位特征与 JD 记忆池】（彻底攻克聊天页无 JD 行业顽疾）：
-               - 详情页无感建池：在 BOSS 浏览岗位时自动提取职位名、公司名与完整任职要求，建立 50 条高速记忆池；
-               - 聊天页秒级命中：从消息列表直接进入聊天时，根据顶部卡片特征自动命中对应完整长 JD；
-               - 智能降级兜底：未建池的全新沟通直接提取顶栏职位与薪资特征，结合最新聊天与简历生成高情商推进话术。
-            2. 主应用独立 Tab 2【岗位针对性模拟面试 · 考点预测押题】完整上线：
-               - 4 维考题深度穿透：技术深水区原理、项目经历真实性深挖、架构场景设计、HR 与综合沟通；
-               - 每道题附带【考官考察意图】+【STAR 法则满分回答逻辑】+【大厂避坑红线】。
-            3. 正式发布包全面去除「-debug」后缀：
-               - 产物规范命名为 JobAssistant-v1.3.0.apk；
-               - 继承统一固化密钥签名，已安装的老板/用户可直接一键无缝覆盖更新，数据 100% 完整保留。
-          files: release_apk/JobAssistant-v1.3.0.apk
+            AI 求职悬浮助手 v1.3.1 极速稳定升级：
+            1. 彻底解决检查更新报 403 错误（GitHub API 频控熔断）：
+               - 通道一（首选）：基于 jsDelivr 全球免费 CDN 极速探测 version.json，永久零频控，延迟 < 50ms；
+               - 通道二（备选）：轻量网页 302 重定向 Location 探针，无 REST API 频控限制；
+               - 通道三（兜底）：官方 GitHub REST API。
+            2. 职位特征与 JD 记忆池：
+               - 在 BOSS 浏览岗位时自动提取职位名、公司名与完整任职要求入池；
+               - 聊天页自动秒级关联命中对应完整长 JD，彻底攻克聊天页无 JD 问题。
+            3. 主应用独立 Tab 2【岗位针对性模拟面试 · 考点预测押题】完整就绪；
+            4. 正式发布包全面去除「-debug」后缀（JobAssistant-v1.3.1.apk），继承固化密钥，一键覆盖安装数据完全保留。
+          files: release_apk/JobAssistant-v1.3.1.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

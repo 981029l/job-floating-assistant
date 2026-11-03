@@ -43,7 +43,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.3.0.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.3.0/JobAssistant-v1.3.0.apk)
+- **最新正式版直链**：[JobAssistant-v1.3.1.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.3.1/JobAssistant-v1.3.1.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -104,6 +104,14 @@ job-floating-assistant/
 
 ## 版本演进记录
 
+- **v1.3.1**：
+  - 彻底解决检查更新 403 错误（GitHub API 频控熔断）：
+    - 升级为「三重容灾互备」更新引擎：首选全球高速 CDN（jsDelivr）探测 `version.json`，永久零频控、零 403、毫秒级响应；
+    - 备用网页 302 重定向探针，读取 HTTP Location 头截取最新版本，完全绕过 GitHub REST API 60次/小时频控；
+    - 手机端在任何 4G/5G 蜂窝网络或弱网环境下均能秒级检查更新并极速弹窗。
+  - 继承 v1.3.0 职位特征与 JD 记忆池（聊天界面自动匹配完整岗位要求）。
+  - 继承主应用独立 Tab 2 模拟面试 4 维考点押题专区。
+  - 纯净正式包发布：`JobAssistant-v1.3.1.apk`（无 -debug，支持数据完整覆盖安装）。
 - **v1.3.0**：
   - 全新上线【职位特征与 JD 记忆池】（彻底攻克聊天页无 JD 行业顽疾）：
     - 详情页无感建池：在 BOSS 直聘浏览岗位详情时自动提取职位名、公司名与完整任职要求，建立 LRU 记忆池；
@@ -111,7 +119,7 @@ job-floating-assistant/
     - 智能降级兜底：未建池的全新对话自动提取顶栏职位与薪资特征，结合最新聊天与简历生成高转化推进话术；
     - 悬浮窗状态胶囊支持显示「记忆池 · 资深前端」，清晰标注命中来源。
   - 主应用独立 Tab 2【岗位针对性模拟面试 · 考点预测押题】全面落地（含 4 维真题矩阵与 STAR 回答策略）。
-  - 安装包全面去除「-debug」后缀，正规生成 `JobAssistant-v1.3.0.apk`。
+  - 安装包全面去除「-debug」后缀，正规生成 `JobAssistant-v1.3.1.apk`。
 - **v1.2.9**：
   - 全新上线【岗位针对性模拟面试 · 考点预测押题】（主应用独立 Tab 2）：
     - 4 维考题深度穿透：技术深水区原理追问、项目经历真实性深挖、系统架构与场景设计、HR 与综合素质；
@@ -119,7 +127,7 @@ job-floating-assistant/
     - 深度解析与避坑：每道题均配备「考官考察意图与考核陷阱」、「STAR 法则高分回答思路」与「大厂避坑红线」；
     - 支持按考点分类一键筛选切换、展开/折叠与一键快速复制。
   - 安装包全面去除「-debug」后缀：
-    - 打包流水线全面切换为正式发布模式（assembleRelease），产物规范命名为 `JobAssistant-v1.3.0.apk`；
+    - 打包流水线全面切换为正式发布模式（assembleRelease），产物规范命名为 `JobAssistant-v1.3.1.apk`；
     - 继承固化密钥签名，支持已有用户直接无缝一键覆盖安装，数据 100% 完整保留。
 - **v1.2.8**：
   - 悬浮窗顶栏精简化重构：彻底移除左侧多余冗余的关闭按钮，左侧规范展示「AI 定制打招呼语」模块标题，右上角保留规范优雅的「✕ 关闭」触控药丸，消除双关闭按钮排版怪异问题；

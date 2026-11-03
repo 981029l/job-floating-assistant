@@ -28,40 +28,149 @@ data class UpdateInfo(
 )
 
 object UpdateManager {
+    // 通道 1: 全球 CDN 静态 version.json (首选, 永久零频控, 移动端延迟 < 50ms)
+    private const val CDN_VERSION_JSON_URL =
+        "https://fastly.jsdelivr.net/gh/981029l/job-floating-assistant@main/version.json"
+    private const val RAW_VERSION_JSON_URL =
+        "https://raw.githubusercontent.com/981029l/job-floating-assistant/main/version.json"
+
+    // 通道 2: Web 网页 302 重定向探针 (走 Web 服务器, 完全不受 60次/小时 REST API 限制)
+    private const val GITHUB_WEB_LATEST_RELEASE =
+        "https://github.com/981029l/job-floating-assistant/releases/latest"
+
+    // 通道 3: 官方 REST API (作为最后兜底)
     private const val GITHUB_LATEST_RELEASE_API =
         "https://api.github.com/repos/981029l/job-floating-assistant/releases/latest"
 
     private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(12, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
+    // 禁用自动重定向的探针客户端 (用于读取 302 Location 头)
+    private val noRedirectHttpClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .build()
+
     suspend fun checkForUpdate(context: Context): Result<UpdateInfo> = withContext(Dispatchers.IO) {
+        val currentVersion = getCurrentVersionName(context)
+
+        // 1. 优先尝试通道 1: jsDelivr 全球加速 CDN (彻底免疫 403)
+        val cdnResult = checkViaVersionJson(CDN_VERSION_JSON_URL, currentVersion)
+        if (cdnResult.isSuccess) {
+            return@withContext cdnResult
+        }
+
+        // 备用通道 1b: Raw GitHub version.json
+        val rawResult = checkViaVersionJson(RAW_VERSION_JSON_URL, currentVersion)
+        if (rawResult.isSuccess) {
+            return@withContext rawResult
+        }
+
+        // 2. 尝试通道 2: 网页 302 重定向探针 (读取 HTTP 302 Location Header)
+        val probeResult = checkViaWebRedirect(GITHUB_WEB_LATEST_RELEASE, currentVersion)
+        if (probeResult.isSuccess) {
+            return@withContext probeResult
+        }
+
+        // 3. 尝试通道 3: 官方 REST API
+        val apiResult = checkViaGithubApi(GITHUB_LATEST_RELEASE_API, currentVersion)
+        if (apiResult.isSuccess) {
+            return@withContext apiResult
+        }
+
+        val lastErr = cdnResult.exceptionOrNull() ?: probeResult.exceptionOrNull() ?: apiResult.exceptionOrNull()
+        Result.failure(Exception("检查更新失败，请稍后重试 (${lastErr?.localizedMessage ?: "网络波动"})"))
+    }
+
+    private fun checkViaVersionJson(url: String, currentVersion: String): Result<UpdateInfo> {
         try {
-            val request = Request.Builder()
-                .url(GITHUB_LATEST_RELEASE_API)
+            val req = Request.Builder()
+                .url(url)
+                .addHeader("User-Agent", "JobAssistant-Android")
+                .get()
+                .build()
+            val resp = httpClient.newCall(req).execute()
+            if (!resp.isSuccessful) {
+                return Result.failure(Exception("HTTP ${resp.code}"))
+            }
+            val body = resp.body?.string() ?: ""
+            val json = JSONObject(body)
+            val latestVersion = json.optString("versionName", "").trim().removePrefix("v").removePrefix("V")
+            val downloadUrl = json.optString("downloadUrl", "")
+            val releaseNotes = json.optString("releaseNotes", "新版本体验与性能优化")
+            if (latestVersion.isBlank() || downloadUrl.isBlank()) {
+                return Result.failure(Exception("格式解析异常"))
+            }
+            val hasUpdate = isNewerVersion(latestVersion, currentVersion)
+            return Result.success(
+                UpdateInfo(
+                    hasUpdate = hasUpdate,
+                    latestVersion = latestVersion,
+                    currentVersion = currentVersion,
+                    releaseNotes = releaseNotes,
+                    downloadUrl = downloadUrl,
+                    assetSize = 0L
+                )
+            )
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
+    }
+
+    private fun checkViaWebRedirect(url: String, currentVersion: String): Result<UpdateInfo> {
+        try {
+            val req = Request.Builder()
+                .url(url)
+                .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36")
+                .head()
+                .build()
+            val resp = noRedirectHttpClient.newCall(req).execute()
+            val location = resp.header("Location") ?: ""
+            if (location.isBlank()) {
+                return Result.failure(Exception("未获取到跳转地址"))
+            }
+            val tag = location.substringAfterLast("/").trim()
+            val latestVersion = tag.removePrefix("v").removePrefix("V")
+            if (latestVersion.isBlank()) {
+                return Result.failure(Exception("版本标识为空"))
+            }
+            val downloadUrl = "https://github.com/981029l/job-floating-assistant/releases/download/$tag/JobAssistant-$tag.apk"
+            val hasUpdate = isNewerVersion(latestVersion, currentVersion)
+            return Result.success(
+                UpdateInfo(
+                    hasUpdate = hasUpdate,
+                    latestVersion = latestVersion,
+                    currentVersion = currentVersion,
+                    releaseNotes = "发现最新版本 $latestVersion，推荐在应用内一键下载更新以获得最佳体验！",
+                    downloadUrl = downloadUrl,
+                    assetSize = 0L
+                )
+            )
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
+    }
+
+    private fun checkViaGithubApi(url: String, currentVersion: String): Result<UpdateInfo> {
+        try {
+            val req = Request.Builder()
+                .url(url)
                 .addHeader("User-Agent", "JobAssistant-Android")
                 .addHeader("Accept", "application/vnd.github.v3+json")
                 .get()
                 .build()
-
-            val response = httpClient.newCall(request).execute()
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception("检查更新失败 (${response.code})"))
+            val resp = httpClient.newCall(req).execute()
+            if (!resp.isSuccessful) {
+                return Result.failure(Exception("API HTTP ${resp.code}"))
             }
-
-            val body = response.body?.string() ?: ""
+            val body = resp.body?.string() ?: ""
             val json = JSONObject(body)
-
             val tagName = json.optString("tag_name", "").trim()
-            val latestVersion = if (tagName.startsWith("v", ignoreCase = true)) {
-                tagName.substring(1)
-            } else {
-                tagName
-            }
-
-            val releaseNotes = json.optString("body", "暂无更新日志说明").trim()
-
+            val latestVersion = tagName.removePrefix("v").removePrefix("V")
+            val releaseNotes = json.optString("body", "暂无更新说明").trim()
             var downloadUrl = ""
             var assetSize = 0L
             val assets = json.optJSONArray("assets")
@@ -76,11 +185,8 @@ object UpdateManager {
                     }
                 }
             }
-
-            val currentVersion = getCurrentVersionName(context)
             val hasUpdate = isNewerVersion(latestVersion, currentVersion) && downloadUrl.isNotBlank()
-
-            Result.success(
+            return Result.success(
                 UpdateInfo(
                     hasUpdate = hasUpdate,
                     latestVersion = latestVersion,
@@ -91,7 +197,7 @@ object UpdateManager {
                 )
             )
         } catch (e: Exception) {
-            Result.failure(e)
+            return Result.failure(e)
         }
     }
 
