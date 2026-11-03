@@ -493,7 +493,8 @@ fun TopHeroHeader(
                                     fontSize = 9.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF047857),
-                                    maxLines = 1
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                         }
@@ -1484,7 +1485,9 @@ fun SimulatedFloatingDialog(
             }
         }
     }
-}\n\n// Tab 1: 求职档案 Profile (遵循 Google Stitch 规范与真实数据流)
+}
+
+// Tab 1: 求职档案 Profile (遵循 Google Stitch 规范与真实数据流)
 @Composable
 fun ProfileTab(
     context: Context,
@@ -2315,7 +2318,9 @@ fun ProfileTab(
         }
     }
 }
-\n\n// Tab 2: AI 设置 Settings (完全真实连通性与零假数据)
+
+
+// Tab 2: AI 设置 Settings (完全真实连通性与零假数据)
 @Composable
 fun SettingsTab(
     context: Context,
@@ -3003,7 +3008,7 @@ fun SettingsTab(
         }
     }
 }
-\n
+
 private fun checkOverlayPermission(context: Context): Boolean {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
         Settings.canDrawOverlays(context)
@@ -3020,7 +3025,7 @@ private fun requestOverlayPermission(context: Context) {
                 Uri.parse("package:${context.packageName}")
             )
             context.startActivity(intent)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
             context.startActivity(intent)
         }
@@ -3031,7 +3036,7 @@ private fun requestAccessibilityPermission(context: Context) {
     try {
         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
         context.startActivity(intent)
-    } catch (_: Exception) {
+    } catch (e: Exception) {
         Toast.makeText(context, "无法直接打开设置，请在系统设置中找到'无障碍'", Toast.LENGTH_LONG).show()
     }
 }
