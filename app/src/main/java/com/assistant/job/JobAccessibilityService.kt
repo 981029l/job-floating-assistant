@@ -89,7 +89,13 @@ class JobAccessibilityService : AccessibilityService() {
                 val lastLine = historyCandidates.lastOrNull() ?: ""
                 val isHrReplied = historyCandidates.size >= 2 && !lastLine.contains("已读") && !lastLine.contains("送达")
 
+                val isTechEvaluation = lastLine.contains("转给技术") || lastLine.contains("技术人员") ||
+                        lastLine.contains("部门负责人") || lastLine.contains("评估") ||
+                        lastLine.contains("看过之后") || lastLine.contains("再通知") ||
+                        lastLine.contains("转给部门") || lastLine.contains("给主管看")
+
                 val mode = when {
+                    isTechEvaluation -> GenerationMode.TECH_EVALUATION
                     isHrReplied -> GenerationMode.IN_DEPTH_CHAT
                     hasReadStatus -> GenerationMode.READ_UNREPLIED
                     hasUnreadOrDelivered -> GenerationMode.UNREAD_NUDGE

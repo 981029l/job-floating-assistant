@@ -43,7 +43,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.2.5-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.4/JobAssistant-v1.2.5-debug.apk)
+- **最新正式版直链**：[JobAssistant-v1.2.6-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.4/JobAssistant-v1.2.6-debug.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -104,6 +104,12 @@ job-floating-assistant/
 
 ## 版本演进记录
 
+- **v1.2.6**：
+  - 全链路 6 档招聘场景全覆盖：接入「简历转交技术人员评估」官方专属提示词；
+  - 智能无障碍场景嗅探：自动识别 HR 回复中“转给技术看/发给部门/评估一下/看过之后联系”等意图，秒级预选技术评估 Tab；
+  - 双风格独立输出：生成「自然得体型」（30-80字感谢转交与跟进意愿）与「岗位优势强化型」（30-80字精准结合JD强化技术优势）；
+  - 智能推荐理由标注：自动研判推荐更适合当前语境的风格，并附带专属建议气泡；
+  - 场景 Tab 栏升级为平滑横向滚动架构（HorizontalScrollView）：自适应多档场景，选中自动平滑滚动，杜绝折行挤压。
 - **v1.2.5**：
   - 彻底修复 Kotlin 语法兼容性，确保 GitHub Actions 云端流水线稳定编译发布；
   - 招聘全链路 5 档场景大满贯：上线「简历跟进 · 投后促转」专属模式；

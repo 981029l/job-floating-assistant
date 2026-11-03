@@ -335,12 +335,39 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
                 return list
             }
         }
+        if (mode == GenerationMode.TECH_EVALUATION) {
+            val pNatural = Regex("【自然得体型】[\\s:：]*([\\s\\S]*?)(?=【岗位优势强化型】|$)")
+            val pAdvantage = Regex("【岗位优势强化型】[\\s:：]*([\\s\\S]*?)(?=【推荐选择】|$)")
+            val pRec = Regex("【推荐选择】[\\s:：]*([\\s\\S]*?)$")
+
+            val mNatural = pNatural.find(cleaned)
+            val mAdvantage = pAdvantage.find(cleaned)
+            val mRec = pRec.find(cleaned)
+
+            val naturalText = mNatural?.groupValues?.get(1)?.trim() ?: ""
+            val advantageText = mAdvantage?.groupValues?.get(1)?.trim() ?: ""
+            val recText = mRec?.groupValues?.get(1)?.trim() ?: ""
+
+            if (naturalText.isNotBlank() || advantageText.isNotBlank()) {
+                val recForNatural = if (recText.contains("自然得体") || !recText.contains("岗位优势")) recText else ""
+                val recForAdvantage = if (recText.contains("岗位优势") || recText.contains("强化型")) recText else ""
+
+                if (naturalText.isNotBlank()) {
+                    list.add(GreetingOption("自然得体型", naturalText, if (recForNatural.isNotBlank()) "推荐理由：$recForNatural" else ""))
+                }
+                if (advantageText.isNotBlank()) {
+                    list.add(GreetingOption("岗位优势强化型", advantageText, if (recForAdvantage.isNotBlank()) "推荐理由：$recForAdvantage" else ""))
+                }
+                return list
+            }
+        }
         val (title1, title2) = when (mode) {
             GenerationMode.FIRST_ICEBREAK -> Pair("技术硬核型", "全面匹配型")
             GenerationMode.READ_UNREPLIED -> Pair("技术攻坚深化型", "业务成效赋能型")
             GenerationMode.UNREAD_NUDGE -> Pair("岗位价值补充型", "自然轻量触达型")
             GenerationMode.IN_DEPTH_CHAT -> Pair("专业答复型", "面试推进型")
             GenerationMode.RESUME_FOLLOW_UP -> Pair("投后跟进型", "面试促成型")
+            GenerationMode.TECH_EVALUATION -> Pair("自然得体型", "岗位优势强化型")
         }
 
         // 1. 优先按完整多行标题进行正则切分（容错各种标记如 ===风格一===、### 风格一、[风格一] 等）

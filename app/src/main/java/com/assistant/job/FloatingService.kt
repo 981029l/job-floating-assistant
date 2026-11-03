@@ -277,10 +277,9 @@ class FloatingService : Service() {
         // -------------------------------------------------------------
         // 场景模式切换 Segmented Tab Bar (首次破冰 / 已读未回 / 未读唤醒)
         // -------------------------------------------------------------
-        val tabContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, (6 * density).toInt(), 0, (2 * density).toInt())
+        val tabScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -289,13 +288,21 @@ class FloatingService : Service() {
             }
         }
 
+        val tabContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, (2 * density).toInt(), 0, (2 * density).toInt())
+        }
+        tabScroll.addView(tabContainer)
+
         val tabButtons = mutableListOf<TextView>()
         val modes = listOf(
             GenerationMode.FIRST_ICEBREAK,
             GenerationMode.READ_UNREPLIED,
             GenerationMode.UNREAD_NUDGE,
             GenerationMode.IN_DEPTH_CHAT,
-            GenerationMode.RESUME_FOLLOW_UP
+            GenerationMode.RESUME_FOLLOW_UP,
+            GenerationMode.TECH_EVALUATION
         )
 
         fun updateTabStyles() {
@@ -311,6 +318,11 @@ class FloatingService : Service() {
                         if (isSelected) (1.5f * density).toInt() else (1 * density).toInt(),
                         if (isSelected) Color.parseColor("#818CF8") else Color.parseColor("#E2E8F0")
                     )
+                }
+                if (isSelected) {
+                    tabScroll.post {
+                        tabScroll.smoothScrollTo(btn.left - (16 * density).toInt(), 0)
+                    }
                 }
             }
         }
@@ -597,15 +609,18 @@ class FloatingService : Service() {
         }
         scrollView.addView(contentContainer)
 
-        // 组装 Tab 按钮点击事件 (5档场景切换)
+        // 组装 Tab 按钮点击事件 (6档场景切换，横向流畅滑动)
         modes.forEachIndexed { index, m ->
             val tabBtn = TextView(this).apply {
                 text = m.tabTitle
-                textSize = 10.5f
+                textSize = 11f
                 gravity = Gravity.CENTER
-                setPadding(0, (7 * density).toInt(), 0, (7 * density).toInt())
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                    if (index > 0) leftMargin = (4 * density).toInt()
+                setPadding((12 * density).toInt(), (7 * density).toInt(), (12 * density).toInt(), (7 * density).toInt())
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    if (index > 0) leftMargin = (6 * density).toInt()
                 }
                 setOnClickListener {
                     if (currentMode != m) {
@@ -620,7 +635,7 @@ class FloatingService : Service() {
             tabContainer.addView(tabBtn)
         }
         updateTabStyles()
-        rootLayout.addView(tabContainer)
+        rootLayout.addView(tabScroll)
         rootLayout.addView(scrollView)
 
         // 绑定重新生成按钮点击事件
@@ -701,6 +716,7 @@ class FloatingService : Service() {
             GenerationMode.UNREAD_NUDGE -> "提炼高密度通知抓手，生成未读触达"
             GenerationMode.IN_DEPTH_CHAT -> "分析对方问题与关注点，生成面试转化回复"
             GenerationMode.RESUME_FOLLOW_UP -> "研判简历查收状态，生成投后高转化回复"
+            GenerationMode.TECH_EVALUATION -> "针对转交技术评估场景，生成得体推进回复"
         }
         val loadingText = TextView(this).apply {
             text = "正在${modeActionDesc}...\n（调用 $currentModel 极速生成中）"
@@ -788,7 +804,7 @@ class FloatingService : Service() {
             gravity = Gravity.CENTER_VERTICAL
         }
 
-        val isHardcore = option.title.contains("硬核") || option.title.contains("攻坚") || option.title.contains("价值") || option.title.contains("投后")
+        val isHardcore = option.title.contains("硬核") || option.title.contains("攻坚") || option.title.contains("价值") || option.title.contains("投后") || option.title.contains("优势") || option.title.contains("强化")
         val tagBg = if (isHardcore) Color.parseColor("#EFF6FF") else Color.parseColor("#ECFDF5")
         val tagColor = if (isHardcore) Color.parseColor("#1677FF") else Color.parseColor("#059669")
         val badgeText = when (mode) {
@@ -797,6 +813,7 @@ class FloatingService : Service() {
             GenerationMode.UNREAD_NUDGE -> if (isHardcore) "价值补充" else "轻量触达"
             GenerationMode.IN_DEPTH_CHAT -> if (isHardcore) "专业答复" else "推进面试"
             GenerationMode.RESUME_FOLLOW_UP -> "投后促转"
+            GenerationMode.TECH_EVALUATION -> if (option.title.contains("自然")) "得体礼貌" else "技术强化"
         }
 
         val tagView = TextView(this).apply {
