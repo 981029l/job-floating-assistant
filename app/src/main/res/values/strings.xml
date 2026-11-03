@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">AI求职悬浮助手</string>
+    <string name="accessibility_service_name">求职助手屏幕识别服务</string>
+    <string name="accessibility_service_description">用于辅助识别当前屏幕上BOSS直聘等招聘平台的岗位描述(JD)，以生成定制打招呼话术。不会收集任何私人账号信息。</string>
+</resources>
