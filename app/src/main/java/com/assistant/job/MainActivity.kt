@@ -13,13 +13,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,8 +26,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +38,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -104,7 +103,7 @@ fun MainScreen() {
                     resumeContent = parsedText
                     StorageManager.saveResume(context, parsedText)
                     uploadedFileName = ResumeParser.getFileName(context, uri)
-                    Toast.makeText(context, "成功导入: $uploadedFileName", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "成功导入简历文件", Toast.LENGTH_SHORT).show()
                 }.onFailure { err ->
                     Toast.makeText(context, "解析失败: ${err.message}", Toast.LENGTH_LONG).show()
                 }
@@ -142,39 +141,64 @@ fun MainScreen() {
         bottomBar = {
             NavigationBar(
                 containerColor = Color.White,
-                tonalElevation = 8.dp
+                tonalElevation = 8.dp,
+                windowInsets = WindowInsets.navigationBars
             ) {
                 NavigationBarItem(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    icon = { Icon(Icons.Rounded.RocketLaunch, contentDescription = "主控") },
+                    icon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_rocket),
+                            contentDescription = "主控",
+                            modifier = Modifier.size(22.dp)
+                        )
+                    },
                     label = { Text("悬浮主控", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFF1677FF),
                         selectedTextColor = Color(0xFF1677FF),
-                        indicatorColor = Color(0xFFE6F4FF)
+                        indicatorColor = Color(0xFFE6F4FF),
+                        unselectedIconColor = Color(0xFF64748B),
+                        unselectedTextColor = Color(0xFF64748B)
                     )
                 )
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Rounded.Badge, contentDescription = "求职档案") },
+                    icon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_badge),
+                            contentDescription = "求职档案",
+                            modifier = Modifier.size(22.dp)
+                        )
+                    },
                     label = { Text("求职档案", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFF722ED1),
                         selectedTextColor = Color(0xFF722ED1),
-                        indicatorColor = Color(0xFFF9F0FF)
+                        indicatorColor = Color(0xFFF9F0FF),
+                        unselectedIconColor = Color(0xFF64748B),
+                        unselectedTextColor = Color(0xFF64748B)
                     )
                 )
                 NavigationBarItem(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    icon = { Icon(Icons.Rounded.Tune, contentDescription = "AI智囊") },
+                    icon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_tune),
+                            contentDescription = "AI设置",
+                            modifier = Modifier.size(22.dp)
+                        )
+                    },
                     label = { Text("AI设置", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFF1677FF),
                         selectedTextColor = Color(0xFF1677FF),
-                        indicatorColor = Color(0xFFE6F4FF)
+                        indicatorColor = Color(0xFFE6F4FF),
+                        unselectedIconColor = Color(0xFF64748B),
+                        unselectedTextColor = Color(0xFF64748B)
                     )
                 )
             }
@@ -215,7 +239,7 @@ fun MainScreen() {
                                         context.startService(intent)
                                     }
                                     floatingServiceRunning = true
-                                    Toast.makeText(context, "好运猫悬浮球已就绪，快去 BOSS直聘 试试吧！", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "好运猫悬浮球已就绪，快去招聘软件试试吧", Toast.LENGTH_SHORT).show()
                                 }
                             } catch (e: Exception) {
                                 Toast.makeText(context, "启动失败: ${e.message}", Toast.LENGTH_LONG).show()
@@ -239,11 +263,11 @@ fun MainScreen() {
                             resumeContent = it
                             StorageManager.saveResume(context, it)
                         },
-                        onResetDefault = {
-                            resumeContent = StorageManager.DEFAULT_RESUME
-                            StorageManager.saveResume(context, StorageManager.DEFAULT_RESUME)
+                        onClearResume = {
+                            resumeContent = ""
+                            StorageManager.saveResume(context, "")
                             uploadedFileName = ""
-                            Toast.makeText(context, "已重置为预设前端亮点简历", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "已清空简历内容", Toast.LENGTH_SHORT).show()
                         }
                     )
                     2 -> SettingsTab(
@@ -272,7 +296,7 @@ fun MainScreen() {
                         },
                         onFetchModelsClick = {
                             if (apiKey.isBlank()) {
-                                Toast.makeText(context, "请先填写 API Key！", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "请先填写 API Key", Toast.LENGTH_SHORT).show()
                                 return@SettingsTab
                             }
                             isFetchingModels = true
@@ -314,9 +338,19 @@ fun MainScreen() {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(m, fontSize = 14.sp, color = if (m == modelName) Color(0xFF1677FF) else Color.DarkGray)
+                            Text(
+                                text = m,
+                                fontSize = 14.sp,
+                                color = if (m == modelName) Color(0xFF1677FF) else Color.DarkGray,
+                                fontWeight = if (m == modelName) FontWeight.Bold else FontWeight.Normal
+                            )
                             if (m == modelName) {
-                                Icon(Icons.Rounded.Check, contentDescription = "Active", tint = Color(0xFF1677FF), modifier = Modifier.size(18.dp))
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_check),
+                                    contentDescription = "Active",
+                                    tint = Color(0xFF1677FF),
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
                         }
                         HorizontalDivider()
@@ -352,7 +386,7 @@ fun TopHeroHeader(floatingServiceRunning: Boolean) {
                 // C1 好运猫圆形 IP 头像
                 Image(
                     painter = painterResource(id = R.mipmap.ic_launcher_round),
-                    contentDescription = "C1 招手好运猫",
+                    contentDescription = "好运猫头像",
                     modifier = Modifier
                         .size(52.dp)
                         .clip(CircleShape)
@@ -377,7 +411,7 @@ fun TopHeroHeader(floatingServiceRunning: Boolean) {
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (floatingServiceRunning) "好运猫待命中 · 悬浮球运行中" else "好运猫待命 · 随时开启",
+                            text = if (floatingServiceRunning) "好运猫运行中 · 点击悬浮球可抓取JD" else "好运猫待命 · 随时开启",
                             fontSize = 11.sp,
                             color = if (floatingServiceRunning) Color(0xFF059669) else Color(0xFF64748B),
                             fontWeight = FontWeight.Medium
@@ -409,7 +443,7 @@ fun DashboardTab(
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(horizontal = 16.dp)
-            .padding(bottom = 20.dp),
+            .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Bento 1: 全局悬浮球主开关 (大卡片)
@@ -432,29 +466,30 @@ fun DashboardTab(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (floatingServiceRunning) "⏹ 正在屏幕停靠" else "▶ 点击开启悬浮窗",
+                        text = if (floatingServiceRunning) "悬浮窗运行中 (点击关闭)" else "开启好运猫悬浮窗",
                         color = Color.White,
-                        fontSize = 18.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = if (floatingServiceRunning) "点击即可关闭屏幕侧边的招手好运猫浮标" else "开启后桌面将出现可爱的招手猫浮标，在 BOSS直聘 点它一键生成招呼语",
+                        text = if (floatingServiceRunning) "招手好运猫浮标已停靠在屏幕边缘，随时可点" else "点击开启悬浮球，在招聘岗位页一键生成定制招呼语",
                         color = Color.White.copy(alpha = 0.85f),
                         fontSize = 12.sp,
                         lineHeight = 16.sp
                     )
                 }
+                Spacer(modifier = Modifier.width(12.dp))
                 Icon(
-                    imageVector = if (floatingServiceRunning) Icons.Rounded.PauseCircle else Icons.Rounded.PlayCircle,
+                    painter = painterResource(id = R.drawable.ic_power),
                     contentDescription = "Toggle",
                     tint = Color.White,
-                    modifier = Modifier.size(42.dp)
+                    modifier = Modifier.size(38.dp)
                 )
             }
         }
 
-        // Bento 2: 权限状态并列卡片
+        // Bento 2: 权限状态并列卡片 (已授权状态明确化为只读标签，未授权才引导开通)
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -463,7 +498,12 @@ fun DashboardTab(
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Security, contentDescription = "Security", tint = Color(0xFF1677FF), modifier = Modifier.size(18.dp))
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_security),
+                        contentDescription = "Security",
+                        tint = Color(0xFF1677FF),
+                        modifier = Modifier.size(18.dp)
+                    )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("核心权限自检", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
                 }
@@ -476,20 +516,31 @@ fun DashboardTab(
                     Column {
                         Text("悬浮窗权限", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                         Text(
-                            if (overlayGranted) "已授权正常" else "未授权，悬浮球无法弹出",
+                            text = if (overlayGranted) "已授权正常" else "未授权，悬浮球无法弹出",
                             fontSize = 11.sp,
                             color = if (overlayGranted) Color(0xFF10B981) else Color(0xFFEF4444)
                         )
                     }
-                    Button(
-                        onClick = onRequestOverlay,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (overlayGranted) Color(0xFFF1F5F9) else Color(0xFF1677FF)
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(if (overlayGranted) "已开通" else "去开通", color = if (overlayGranted) Color(0xFF64748B) else Color.White, fontSize = 11.sp)
+                    if (overlayGranted) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_check),
+                                contentDescription = null,
+                                tint = Color(0xFF059669),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("已授权", color = Color(0xFF059669), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Button(
+                            onClick = onRequestOverlay,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1677FF)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Text("去开通", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
 
@@ -503,33 +554,44 @@ fun DashboardTab(
                     Column {
                         Text("无障碍自动读屏", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                         Text(
-                            if (accessibilityGranted) "已开通正常" else "未开通，可在浮窗内粘贴JD兜底",
+                            text = if (accessibilityGranted) "已开通正常" else "未开通，可在浮窗内粘贴JD兜底",
                             fontSize = 11.sp,
                             color = if (accessibilityGranted) Color(0xFF10B981) else Color(0xFFEF4444)
                         )
                     }
-                    Button(
-                        onClick = onRequestAccessibility,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (accessibilityGranted) Color(0xFFF1F5F9) else Color(0xFF1677FF)
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(if (accessibilityGranted) "已开通" else "去开通", color = if (accessibilityGranted) Color(0xFF64748B) else Color.White, fontSize = 11.sp)
+                    if (accessibilityGranted) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_check),
+                                contentDescription = null,
+                                tint = Color(0xFF059669),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("已开通", color = Color(0xFF059669), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Button(
+                            onClick = onRequestAccessibility,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1677FF)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Text("去开通", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
         }
 
-        // Bento 3: 当前运行模型与快捷切换
+        // Bento 3: 当前运行模型与横向自适应切换标签
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             shape = RoundedCornerShape(20.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -539,20 +601,49 @@ fun DashboardTab(
                     Text(modelName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1677FF))
                 }
                 Text("快捷切换模型引擎：", fontSize = 11.sp, color = Color(0xFF64748B))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("deepseek-chat", "deepseek-reasoner", "qwen-turbo").forEach { m ->
+
+                val presetModels = listOf("deepseek-chat", "deepseek-reasoner", "deepseek-flash", "qwen-turbo")
+                val chipList = if (modelName.isNotBlank() && modelName !in presetModels) {
+                    listOf(modelName) + presetModels
+                } else {
+                    presetModels
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    chipList.forEach { m ->
                         val active = m == modelName
-                        SuggestionChip(
+                        Surface(
                             onClick = { onQuickSwitchModel(m) },
-                            label = { Text(m, fontSize = 11.sp, color = if (active) Color(0xFF1677FF) else Color(0xFF475569)) },
-                            colors = SuggestionChipDefaults.suggestionChipColors(
-                                containerColor = if (active) Color(0xFFEFF6FF) else Color(0xFFF8FAFC)
-                            ),
-                            border = SuggestionChipDefaults.suggestionChipBorder(
-                                enabled = true,
-                                borderColor = if (active) Color(0xFF93C5FD) else Color(0xFFE2E8F0)
-                            )
-                        )
+                            color = if (active) Color(0xFF1677FF) else Color(0xFFF1F5F9),
+                            shape = RoundedCornerShape(8.dp),
+                            border = if (active) null else BorderStroke(1.dp, Color(0xFFE2E8F0))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (active) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_check),
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
+                                Text(
+                                    text = m,
+                                    fontSize = 11.5.sp,
+                                    color = if (active) Color.White else Color(0xFF475569),
+                                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -566,13 +657,18 @@ fun DashboardTab(
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Lightbulb, contentDescription = "Tip", tint = Color(0xFFD97706), modifier = Modifier.size(16.dp))
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_info),
+                        contentDescription = "Tip",
+                        tint = Color(0xFFD97706),
+                        modifier = Modifier.size(16.dp)
+                    )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("求职实战操作技巧：", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF92400E))
+                    Text("求职实战操作技巧", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF92400E))
                 }
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "1. 打开悬浮球后直接去 BOSS直聘 看岗位；\n2. 点击屏幕侧边猫猫头像，浮窗瞬间生成招呼语；\n3. 点击【复制此话术并关闭】直接去粘贴发送，快速拿下面试！",
+                    text = "1. 打开悬浮球后直接进入招聘岗位详情页；\n2. 点击屏幕侧边猫猫头像，浮窗瞬间抓取岗位要求并匹配话术；\n3. 弹窗内可随时核对岗位文本或手动粘贴，点击复制一键直投！",
                     fontSize = 11.sp,
                     color = Color(0xFF78350F),
                     lineHeight = 16.sp
@@ -582,7 +678,7 @@ fun DashboardTab(
     }
 }
 
-// Tab 1: 求职档案中心 Profile
+// Tab 1: 求职档案中心 Profile (修复标签折断、删除预设文案)
 @Composable
 fun ProfileTab(
     context: Context,
@@ -591,41 +687,51 @@ fun ProfileTab(
     isParsing: Boolean,
     onUploadClick: () -> Unit,
     onResumeChange: (String) -> Unit,
-    onResetDefault: () -> Unit
+    onClearResume: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding()
             .verticalScroll(scrollState)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 上传文件卡片 (紫色高光)
+        // 上传文件卡片 (紫色高光，适中比例)
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color(0xFFFAF5FF)),
             shape = RoundedCornerShape(20.dp),
             border = CardDefaults.outlinedCardBorder().copy(brush = Brush.horizontalGradient(listOf(Color(0xFFD8B4FE), Color(0xFFC084FC))))
         ) {
-            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.UploadFile, contentDescription = "Upload", tint = Color(0xFF722ED1), modifier = Modifier.size(24.dp))
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_upload),
+                        contentDescription = "Upload",
+                        tint = Color(0xFF722ED1),
+                        modifier = Modifier.size(22.dp)
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
                     Column {
-                        Text("导入本地简历文件", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF581C87))
+                        Text("导入本地简历文件", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF581C87))
                         Text("支持 PDF、Word (.docx) 及纯文本格式", fontSize = 11.sp, color = Color(0xFF7E22CE))
                     }
                 }
 
                 Button(
                     onClick = onUploadClick,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(42.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF722ED1)),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text(if (isParsing) "正在解析文件中..." else "📁 选择手机简历文件导入", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = if (isParsing) "正在解析文件中..." else "选择手机简历文件导入",
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
                 if (uploadedFileName.isNotBlank()) {
@@ -634,7 +740,7 @@ fun ProfileTab(
             }
         }
 
-        // 简历核心亮点标签
+        // 简历核心亮点标签 (支持水平平滑滑动，杜绝文字垂直折叠)
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -647,30 +753,63 @@ fun ProfileTab(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("简历核心提取亮点", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
-                    TextButton(onClick = onResetDefault) {
-                        Text("恢复预设", fontSize = 12.sp, color = Color(0xFF1677FF))
-                    }
-                }
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("7年前端", "Vue3+TS", "大模型SSE", "直播Canvas", "全日制科班").forEach { tag ->
-                        Surface(
-                            color = Color(0xFFF1F5F9),
-                            shape = RoundedCornerShape(6.dp)
-                        ) {
-                            Text(tag, fontSize = 10.sp, color = Color(0xFF475569), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                    if (resumeContent.isNotBlank()) {
+                        TextButton(onClick = onClearResume) {
+                            Text("清空简历", fontSize = 11.5.sp, color = Color(0xFFDC2626))
                         }
                     }
                 }
 
-                Text("以下内容将作为打招呼时的核心匹配依据（可直接编辑）：", fontSize = 11.sp, color = Color(0xFF64748B))
+                // 动态匹配高亮标签并横向滑动排版
+                val matchedTags = remember(resumeContent) {
+                    val candidateKeywords = listOf("前端", "后端", "全栈", "Vue", "React", "TypeScript", "Node.js", "Java", "Python", "Go", "Android", "iOS", "AI", "大模型", "科班", "本科", "硕士", "架构", "性能优化")
+                    candidateKeywords.filter { resumeContent.contains(it, ignoreCase = true) }
+                }
+
+                if (matchedTags.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        matchedTags.forEach { tag ->
+                            Surface(
+                                color = Color(0xFFF1F5F9),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = tag,
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF475569),
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Text(
+                        text = if (resumeContent.isBlank()) "暂未录入简历内容，可直接在下方粘贴或上方导入文件" else "自定义简历内容已录入",
+                        fontSize = 11.sp,
+                        color = Color(0xFF94A3B8)
+                    )
+                }
+
+                Text("以下内容将作为打招呼时的核心匹配依据（自动保存）：", fontSize = 11.sp, color = Color(0xFF64748B))
 
                 OutlinedTextField(
                     value = resumeContent,
                     onValueChange = onResumeChange,
+                    placeholder = {
+                        Text(
+                            text = "请在此处粘贴您的个人简历正文、求职意向或核心技能亮点，或者点击上方直接选择手机简历文件导入...",
+                            fontSize = 12.sp,
+                            color = Color(0xFF94A3B8)
+                        )
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(240.dp),
+                        .heightIn(min = 180.dp, max = 340.dp),
                     shape = RoundedCornerShape(12.dp),
                     textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, lineHeight = 18.sp)
                 )
@@ -679,7 +818,7 @@ fun ProfileTab(
     }
 }
 
-// Tab 2: AI 智囊设置 Settings
+// Tab 2: AI 智囊设置 Settings (API Key 密码掩码 + 统一高度蓝底拉取按钮)
 @Composable
 fun SettingsTab(
     context: Context,
@@ -696,10 +835,12 @@ fun SettingsTab(
     onFetchModelsClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
+    var apiKeyVisible by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding()
             .verticalScroll(scrollState)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -712,13 +853,25 @@ fun SettingsTab(
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("API 接口配置", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
 
+                // API Key 密码遮罩输入框，支持眼睛图标明暗切换
                 OutlinedTextField(
                     value = apiKey,
                     onValueChange = onApiKeyChange,
                     label = { Text("API Key (sk-...)") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                    singleLine = true
+                    singleLine = true,
+                    visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
+                            Icon(
+                                painter = painterResource(id = if (apiKeyVisible) R.drawable.ic_visibility_off else R.drawable.ic_visibility),
+                                contentDescription = if (apiKeyVisible) "隐藏秘钥" else "显示秘钥",
+                                tint = Color(0xFF64748B),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 )
 
                 OutlinedTextField(
@@ -730,6 +883,7 @@ fun SettingsTab(
                     singleLine = true
                 )
 
+                // 模型名称与联网拉取按钮（高度 56dp 严格对齐，主色调沉稳蓝）
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -739,18 +893,30 @@ fun SettingsTab(
                         value = modelName,
                         onValueChange = onModelNameChange,
                         label = { Text("模型名称") },
-                        modifier = Modifier.weight(1.3f),
+                        modifier = Modifier.weight(1.2f),
                         shape = RoundedCornerShape(10.dp),
                         singleLine = true
                     )
 
                     Button(
                         onClick = onFetchModelsClick,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                        modifier = Modifier
+                            .height(56.dp)
+                            .weight(0.9f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1677FF)),
                         shape = RoundedCornerShape(10.dp)
                     ) {
-                        Text(if (isFetchingModels) "拉取中..." else "🔄 联网拉取", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_sync),
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (isFetchingModels) "拉取中..." else "联网拉取",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
@@ -773,7 +939,7 @@ fun SettingsTab(
                         onPromptChange(StorageManager.DEFAULT_SYSTEM_PROMPT)
                         Toast.makeText(context, "已重置为默认 Prompt", Toast.LENGTH_SHORT).show()
                     }) {
-                        Text("重置默认", fontSize = 11.sp)
+                        Text("重置默认", fontSize = 11.5.sp)
                     }
                 }
 
@@ -782,9 +948,9 @@ fun SettingsTab(
                     onValueChange = onPromptChange,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp),
+                        .heightIn(min = 160.dp, max = 280.dp),
                     shape = RoundedCornerShape(12.dp),
-                    textStyle = LocalTextStyle.current.copy(fontSize = 11.sp, lineHeight = 16.sp)
+                    textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, lineHeight = 16.sp)
                 )
             }
         }

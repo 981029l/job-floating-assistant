@@ -13,15 +13,7 @@ object StorageManager {
 
     const val DEFAULT_BASE_URL = "https://api.deepseek.com/v1"
     const val DEFAULT_MODEL = "deepseek-chat"
-
-    val DEFAULT_RESUME = """
-吕宽友 | 7年前端研发经验 | 期望城市：深圳 | 期望薪资：15-20K
-【核心优势】
-1. 精通 Vue3 + TypeScript + Vite，熟练掌握 React、微信小程序原生开发与 Node.js 全栈。
-2. 深度主导 AI 落地项目：精通 OpenAI API、SSE 流式打字机交互、语音合成（EdgeTTS/讯飞）、知识库检索与文档切片双向高亮溯源。
-3. 架构与性能攻坚：具备 Web/APP/H5/小程序多端统一架构能力；主导过直播平台万级弹幕 Canvas/Web Workers 调度（峰值3000+条/秒稳定）、弱网保活重连、虚拟列表及首屏优化。
-4. 全日制软件工程本科科班出身，工程化与业务闭环能力扎实。
-""".trimIndent()
+    const val DEFAULT_RESUME = ""
 
     val DEFAULT_SYSTEM_PROMPT = """
 你是一位顶尖的技术求职顾问与技术专家。

@@ -41,7 +41,7 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.0.7-debug.apk
+          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.0.8-debug.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -54,16 +54,19 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.7
-          name: "AI求职悬浮助手 v1.0.7 (悬浮窗岗位JD识别预览与手动修改/剪贴板覆盖)"
+          tag_name: v1.0.8
+          name: "AI求职悬浮助手 v1.0.8 (全链路交互审查优化·全面剔除Emoji·原生矢量图标·包体积精简)"
           body: |
-            🎉 **AI 求职悬浮助手 v1.0.7 更新日志**：
-            1. 🔍 **新增【岗位 JD 识别状态与字数徽章】**：点击悬浮球后，在弹窗顶部直接展示已识别到的字数与状态（如「✓ 识别成功 · 258 字」）；
-            2. 📋 **新增【JD 实时预览与单行折叠摘要】**：默认展示已读屏文本摘要，可随时点击【校对/修改 ▾】展开完整文本进行核验；
-            3. ✏️ **新增【多行手动编辑与剪贴板一键覆盖】**：若屏幕自动识别有遗漏或不准，支持长按修改，或一键点击【📋 粘贴剪贴板】快速替换；
-            4. 🚀 **新增【按新 JD 重新生成】闭环**：修改或粘贴完成后，点击【🚀 按此JD重新生成】，即刻调用 AI 重算并输出高匹配度定制打招呼语；
-            5. 🛡️ **体验优化**：优化 WindowManager 软键盘弹起自适应（`SOFT_INPUT_ADJUST_RESIZE`），并增加异步生成任务防重取消控制。
-          files: release_apk/JobAssistant-v1.0.7-debug.apk
+            AI 求职悬浮助手 v1.0.8 重大交互与体验优化发布：
+            1. 全面剔除 Emoji 表情符号：所有界面文本、卡片提示、Toast 及弹窗中全部去除 Emoji，换为严谨沉稳的专业排版；
+            2. 原生安卓矢量图标库落地：全面迁移至 11 枚原生 XML Vector Drawables，彻底移除臃肿的 material-icons-extended 依赖，APK 体积大幅精简瘦身；
+            3. 删除硬编码预设简历：StorageManager 默认简历回归纯净空白，不再捆绑任何个人历史假数据；
+            4. 修复系统手势小白条穿透：底部导航栏注入 windowInsets 安全区，彻底解决返回小白条压迫 Tab 标签的交互违规；
+            5. API Key 隐私保护：默认启用密码遮罩，支持点击眼睛图标明暗安全切换，防范截屏与窥视泄密；
+            6. 修复标签垂直折叠 Bug：简历提取亮点标签支持平滑横向滚动，彻底杜绝文字折断成三行的排版灾难；
+            7. 修正权限自检交互歧义：已授权直接呈现优雅对勾标签，未授权才引导开通按钮；
+            8. 模型拉取对齐与色彩收敛：统一 56dp 严格对齐，去除突兀绿色，回归统一科技蓝。
+          files: release_apk/JobAssistant-v1.0.8-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -238,12 +238,12 @@ class FloatingService : Service() {
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
         val closeBtn = Button(this).apply {
-            text = "✕"
-            textSize = 15f
+            text = "关闭"
+            textSize = 12f
             setTextColor(Color.parseColor("#64748B"))
             setBackgroundColor(Color.TRANSPARENT)
             setPadding(0, 0, 0, 0)
-            layoutParams = LinearLayout.LayoutParams((32 * density).toInt(), (32 * density).toInt())
+            layoutParams = LinearLayout.LayoutParams((44 * density).toInt(), (32 * density).toInt())
             setOnClickListener { dismissDialog() }
         }
         headerLayout.addView(titleView)
@@ -279,14 +279,14 @@ class FloatingService : Service() {
         val jdStatusBadge = TextView(this).apply {
             val count = initialJd.length
             if (count >= 20) {
-                text = "✓ 识别成功 · $count 字"
+                text = "已识别 · $count 字"
                 setTextColor(Color.parseColor("#059669"))
                 background = GradientDrawable().apply {
                     setColor(Color.parseColor("#ECFDF5"))
                     cornerRadius = 6 * density
                 }
             } else {
-                text = "⚠ 未读全 · 需手动粘贴"
+                text = "未完全识别 · 需手动粘贴"
                 setTextColor(Color.parseColor("#D97706"))
                 background = GradientDrawable().apply {
                     setColor(Color.parseColor("#FFFBEB"))
@@ -308,7 +308,7 @@ class FloatingService : Service() {
         }
 
         val toggleBtn = TextView(this).apply {
-            text = if (initialJd.length >= 20) "校对/修改 ▾" else "收起 ▴"
+            text = if (initialJd.length >= 20) "校对/修改" else "收起"
             textSize = 11.5f
             setTextColor(Color.parseColor("#2563EB"))
             paint.isFakeBoldText = true
@@ -371,7 +371,7 @@ class FloatingService : Service() {
         }
 
         val pasteBtn = Button(this).apply {
-            text = "📋 粘贴剪贴板"
+            text = "粘贴剪贴板"
             textSize = 11.5f
             setTextColor(Color.parseColor("#2563EB"))
             background = GradientDrawable().apply {
@@ -417,7 +417,7 @@ class FloatingService : Service() {
         }
 
         val regenerateBtn = Button(this).apply {
-            text = "🚀 按此JD重新生成"
+            text = "按此JD重新生成"
             textSize = 11.5f
             setTextColor(Color.WHITE)
             paint.isFakeBoldText = true
@@ -445,11 +445,11 @@ class FloatingService : Service() {
             override fun afterTextChanged(s: Editable?) {
                 val len = s?.length ?: 0
                 if (len >= 20) {
-                    jdStatusBadge.text = "✓ 已就绪 · $len 字"
+                    jdStatusBadge.text = "已就绪 · $len 字"
                     jdStatusBadge.setTextColor(Color.parseColor("#059669"))
                     (jdStatusBadge.background as? GradientDrawable)?.setColor(Color.parseColor("#ECFDF5"))
                 } else {
-                    jdStatusBadge.text = "⚠ 内容较短 · $len 字"
+                    jdStatusBadge.text = "内容较短 · $len 字"
                     jdStatusBadge.setTextColor(Color.parseColor("#D97706"))
                     (jdStatusBadge.background as? GradientDrawable)?.setColor(Color.parseColor("#FFFBEB"))
                 }
@@ -468,11 +468,11 @@ class FloatingService : Service() {
                 } else {
                     "（暂无岗位内容，点击展开可粘贴）"
                 }
-                toggleBtn.text = "校对/修改 ▾"
+                toggleBtn.text = "校对/修改"
             } else {
                 jdEditSection.visibility = View.VISIBLE
                 previewSnippet.visibility = View.GONE
-                toggleBtn.text = "收起 ▴"
+                toggleBtn.text = "收起"
                 jdEditText.requestFocus()
             }
         }
@@ -507,7 +507,7 @@ class FloatingService : Service() {
             jdEditSection.visibility = View.GONE
             previewSnippet.visibility = View.VISIBLE
             previewSnippet.text = "预览: " + customJd.replace("\n", " ")
-            toggleBtn.text = "校对/修改 ▾"
+            toggleBtn.text = "校对/修改"
 
             Toast.makeText(this@FloatingService, "已应用最新 JD，正在为您生成匹配话术...", Toast.LENGTH_SHORT).show()
             triggerAiGeneration(contentContainer, customJd)
@@ -515,7 +515,7 @@ class FloatingService : Service() {
 
         // 底部提示栏
         val footerTip = TextView(this).apply {
-            text = "💡 提示：若岗位的任职要求较长，建议在BOSS上下滑动一次或长按复制后在此粘贴"
+            text = "提示：若岗位的任职要求较长，建议在BOSS上下滑动一次或长按复制后在此粘贴"
             textSize = 10.5f
             setTextColor(Color.parseColor("#64748B"))
             gravity = Gravity.CENTER
@@ -537,7 +537,7 @@ class FloatingService : Service() {
             // 如果初次识别没有达到 20 字，在下方展示友好引导
             contentContainer.removeAllViews()
             val promptTip = TextView(this).apply {
-                text = "📌 屏幕文字未完全识别\n请在上方卡片中检查并点击【📋 粘贴剪贴板】，然后点击【🚀 按此JD重新生成】。"
+                text = "屏幕文字未完全识别\n请在上方卡片中检查并点击【粘贴剪贴板】，然后点击【按此JD重新生成】。"
                 setTextColor(Color.parseColor("#64748B"))
                 textSize = 13f
                 gravity = Gravity.CENTER
