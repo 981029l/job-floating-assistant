@@ -27,13 +27,16 @@ class JobAccessibilityService : AccessibilityService() {
             val mode: GenerationMode,
             val jdText: String,
             val chatHistory: String,
-            val latestMessage: String = ""
+            val latestMessage: String = "",
+            val screenText: String = "",
+            val resumeStatus: String = "",
+            val elapsedTime: String = ""
         )
 
         fun inspectCurrentScene(): SceneInspection {
             val service = instance
             if (service == null) {
-                return SceneInspection(GenerationMode.FIRST_ICEBREAK, cachedAppScreenText, "")
+                return SceneInspection(GenerationMode.FIRST_ICEBREAK, cachedAppScreenText, "", "", cachedAppScreenText, "未发送", "")
             }
 
             var hasChatInput = false
@@ -64,11 +67,11 @@ class JobAccessibilityService : AccessibilityService() {
                 for (i in 0 until node.childCount) {
                     try {
                         scan(node.getChild(i))
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {}
                 }
             }
 
-            val windows = try { service.windows } catch (_: Exception) { null }
+            val windows = try { service.windows } catch (e: Exception) { null }
             if (!windows.isNullOrEmpty()) {
                 for (w in windows) {
                     if (w.type == AccessibilityWindowInfo.TYPE_APPLICATION) {
@@ -77,7 +80,7 @@ class JobAccessibilityService : AccessibilityService() {
                 }
             }
             if (allTextLines.isEmpty()) {
-                val root = try { service.rootInActiveWindow } catch (_: Exception) { null }
+                val root = try { service.rootInActiveWindow } catch (e: Exception) { null }
                 if (root != null) scan(root)
             }
 
@@ -96,10 +99,13 @@ class JobAccessibilityService : AccessibilityService() {
                 val chatHistory = historyCandidates.takeLast(4).joinToString("\n")
                 val latestMessage = if (isHrReplied) lastLine else (historyCandidates.lastOrNull() ?: "")
                 val jdText = if (lastExtractedJd.length >= 20) lastExtractedJd else allTextLines.joinToString("\n").take(300)
-                return SceneInspection(mode, jdText, chatHistory, latestMessage)
+                val fullScreen = allTextLines.joinToString("\n")
+                val hasResumeMention = fullScreen.contains("简历") || fullScreen.contains("附件")
+                val resumeStatus = if (hasResumeMention) "聊天中已出现简历发送或索要记录" else "暂未发送简历"
+                return SceneInspection(mode, jdText, chatHistory, latestMessage, screenText = fullScreen, resumeStatus = resumeStatus, elapsedTime = "当天")
             } else {
                 val jd = captureCurrentScreenText()
-                return SceneInspection(GenerationMode.FIRST_ICEBREAK, jd, "", "")
+                return SceneInspection(GenerationMode.FIRST_ICEBREAK, jd, "", "", screenText = jd, resumeStatus = "未发送", elapsedTime = "")
             }
         }
 
@@ -149,7 +155,7 @@ class JobAccessibilityService : AccessibilityService() {
             // 1. 优先尝试从所有非系统应用窗口提取 (避免悬浮窗遮挡导致的焦点丢失)
             val windows = try {
                 service.windows
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 null
             }
 
@@ -165,7 +171,7 @@ class JobAccessibilityService : AccessibilityService() {
             if (currentLines.isEmpty()) {
                 val root = try {
                     service.rootInActiveWindow
-                } catch (_: Exception) {
+                } catch (e: Exception) {
                     null
                 }
                 if (root != null) {
@@ -219,7 +225,7 @@ class JobAccessibilityService : AccessibilityService() {
             for (i in 0 until node.childCount) {
                 try {
                     collectNodeLines(node.getChild(i), list)
-                } catch (_: Exception) {}
+                } catch (e: Exception) {}
             }
         }
     }
@@ -251,7 +257,7 @@ class JobAccessibilityService : AccessibilityService() {
         ) {
             val root = try {
                 rootInActiveWindow
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 null
             }
             if (root != null) {

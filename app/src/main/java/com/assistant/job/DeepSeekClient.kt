@@ -221,7 +221,10 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
         jdText: String,
         mode: GenerationMode = GenerationMode.FIRST_ICEBREAK,
         chatHistory: String = "",
-        latestMessage: String = ""
+        latestMessage: String = "",
+        screenText: String = "",
+        resumeStatus: String = "",
+        elapsedTime: String = ""
     ): Result<List<GreetingOption>> = withContext(Dispatchers.IO) {
         try {
             val apiKey = StorageManager.getApiKey(context)
@@ -242,6 +245,9 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
                         .replace("{{resume}}", resume.ifBlank { "（未录入完整简历）" })
                         .replace("{{chatHistory}}", chatHistory.ifBlank { "（此前双方已有初步沟通记录）" })
                         .replace("{{latestMessage}}", latestMessage.ifBlank { "（对方已作出回复，请结合上下文推进面试转化）" })
+                        .replace("{{screenText}}", screenText.ifBlank { "（当前屏幕聊天窗口内容）" })
+                        .replace("{{resumeStatus}}", resumeStatus.ifBlank { "候选人已发送在线/附件简历" })
+                        .replace("{{elapsedTime}}", elapsedTime.ifBlank { "数小时前或未标注时间" })
                     put(JSONObject().apply {
                         put("role", "user")
                         put("content", promptContent)
@@ -303,11 +309,38 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
             cleaned = cleaned.replace(Regex("^```[a-zA-Z]*\\n?"), "").replace(Regex("\\n?```$"), "").trim()
         }
 
+        if (mode == GenerationMode.RESUME_FOLLOW_UP) {
+            var scene = ""
+            var speech = ""
+            var tip = ""
+
+            val sceneMatch = Regex("【当前场景】[\\s:：]*([^\\n]+)").find(cleaned)
+            if (sceneMatch != null) {
+                scene = sceneMatch.groupValues[1].trim()
+            }
+
+            val speechMatch = Regex("【推荐话术】[\\s:：]*([\\s\\S]*?)(?=【沟通建议】|$)").find(cleaned)
+            if (speechMatch != null) {
+                speech = speechMatch.groupValues[1].trim()
+            }
+
+            val tipMatch = Regex("【沟通建议】[\\s:：]*([\\s\\S]*?)$").find(cleaned)
+            if (tipMatch != null) {
+                tip = tipMatch.groupValues[1].trim()
+            }
+
+            if (speech.isNotBlank()) {
+                val cardTitle = if (scene.isNotBlank()) "投后跟进 · $scene" else "投后精准跟进"
+                list.add(GreetingOption(cardTitle, speech, tip))
+                return list
+            }
+        }
         val (title1, title2) = when (mode) {
             GenerationMode.FIRST_ICEBREAK -> Pair("技术硬核型", "全面匹配型")
             GenerationMode.READ_UNREPLIED -> Pair("技术攻坚深化型", "业务成效赋能型")
             GenerationMode.UNREAD_NUDGE -> Pair("岗位价值补充型", "自然轻量触达型")
             GenerationMode.IN_DEPTH_CHAT -> Pair("专业答复型", "面试推进型")
+            GenerationMode.RESUME_FOLLOW_UP -> Pair("投后跟进型", "面试促成型")
         }
 
         // 1. 优先按完整多行标题进行正则切分（容错各种标记如 ===风格一===、### 风格一、[风格一] 等）
@@ -501,5 +534,6 @@ data class StructuredResume(
 
 data class GreetingOption(
     val title: String,
-    val text: String
+    val text: String,
+    val tip: String = ""
 )

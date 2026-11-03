@@ -43,7 +43,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.2.4-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.4/JobAssistant-v1.2.4-debug.apk)
+- **最新正式版直链**：[JobAssistant-v1.2.5-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.4/JobAssistant-v1.2.5-debug.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -104,6 +104,11 @@ job-floating-assistant/
 
 ## 版本演进记录
 
+- **v1.2.5**：
+  - 彻底修复 Kotlin 语法兼容性，确保 GitHub Actions 云端流水线稳定编译发布；
+  - 招聘全链路 5 档场景大满贯：上线「简历跟进 · 投后促转」专属模式；
+  - 7 大投后状态智能研判：覆盖刚索要准备发、已发等查看、已确认收到、已读未回、继续询问、面试意向、长时间无回复等真实求职阶段；
+  - 专属推荐话术与沟通建议卡片：精准提炼场景名称与 50-120 字推荐话术，并附带「 沟通建议」策略提示，复制按钮一键仅复制纯文本回复，杜绝误带提示。
 - **v1.2.4**：
   - 全链路招聘沟通4档场景全覆盖：全新增加「深入沟通 · 面试转化」场景，针对招聘方已有回复的情境深度对线；
   - 10大对话意图精准识别与面试推进：针对技术询问、项目经验、AI开发能力、薪资待遇、到岗时间及面试邀约生成高情商专业回复（50-150字）；

@@ -153,7 +153,7 @@ class FloatingService : Service() {
                     params.y = initialY + dy
                     try {
                         windowManager.updateViewLayout(ballView, params)
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {}
                     true
                 }
                 MotionEvent.ACTION_UP -> {
@@ -189,6 +189,9 @@ class FloatingService : Service() {
         var currentMode = scene.mode
         var currentChatHistory = scene.chatHistory
         var currentLatestMsg = scene.latestMessage
+        var currentScreenText = scene.screenText
+        var currentResumeStatus = scene.resumeStatus
+        var currentElapsedTime = scene.elapsedTime
         var currentJd = if (initialJd.length >= 20) initialJd else if (scene.jdText.length >= 20) scene.jdText else initialJd
 
         val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -291,7 +294,8 @@ class FloatingService : Service() {
             GenerationMode.FIRST_ICEBREAK,
             GenerationMode.READ_UNREPLIED,
             GenerationMode.UNREAD_NUDGE,
-            GenerationMode.IN_DEPTH_CHAT
+            GenerationMode.IN_DEPTH_CHAT,
+            GenerationMode.RESUME_FOLLOW_UP
         )
 
         fun updateTabStyles() {
@@ -583,7 +587,7 @@ class FloatingService : Service() {
         modes.forEachIndexed { index, m ->
             val tabBtn = TextView(this).apply {
                 text = m.tabTitle
-                textSize = 11f
+                textSize = 10.5f
                 gravity = Gravity.CENTER
                 setPadding(0, (7 * density).toInt(), 0, (7 * density).toInt())
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
@@ -594,7 +598,7 @@ class FloatingService : Service() {
                         currentMode = m
                         updateTabStyles()
                         Toast.makeText(this@FloatingService, "切换模式: ${m.tabTitle} (${m.badge})", Toast.LENGTH_SHORT).show()
-                        triggerAiGeneration(contentContainer, currentJd, currentMode, currentChatHistory, currentLatestMsg)
+                        triggerAiGeneration(contentContainer, currentJd, currentMode, currentChatHistory, currentLatestMsg, currentScreenText, currentResumeStatus, currentElapsedTime)
                     }
                 }
             }
@@ -635,7 +639,7 @@ class FloatingService : Service() {
 
             currentJd = customJd
             Toast.makeText(this@FloatingService, "已应用最新 JD，正在为您生成匹配话术...", Toast.LENGTH_SHORT).show()
-            triggerAiGeneration(contentContainer, customJd, currentMode, currentChatHistory, currentLatestMsg)
+            triggerAiGeneration(contentContainer, customJd, currentMode, currentChatHistory, currentLatestMsg, currentScreenText, currentResumeStatus, currentElapsedTime)
         }
 
         // 底部提示栏
@@ -657,7 +661,7 @@ class FloatingService : Service() {
         }
 
         if (currentJd.length >= 15 || currentMode != GenerationMode.FIRST_ICEBREAK) {
-            triggerAiGeneration(contentContainer, currentJd, currentMode, currentChatHistory, currentLatestMsg)
+            triggerAiGeneration(contentContainer, currentJd, currentMode, currentChatHistory, currentLatestMsg, currentScreenText, currentResumeStatus, currentElapsedTime)
         } else {
             // 如果初次识别没有达到 20 字，在下方展示友好引导
             contentContainer.removeAllViews()
@@ -678,7 +682,10 @@ class FloatingService : Service() {
         jdText: String,
         mode: GenerationMode = GenerationMode.FIRST_ICEBREAK,
         chatHistory: String = "",
-        latestMessage: String = ""
+        latestMessage: String = "",
+        screenText: String = "",
+        resumeStatus: String = "",
+        elapsedTime: String = ""
     ) {
         currentGenerationJob?.cancel()
         container.removeAllViews()
@@ -693,6 +700,7 @@ class FloatingService : Service() {
             GenerationMode.READ_UNREPLIED -> "挖掘深水攻坚亮点，生成已读二度跟进"
             GenerationMode.UNREAD_NUDGE -> "提炼高密度通知抓手，生成未读触达"
             GenerationMode.IN_DEPTH_CHAT -> "分析对方问题与关注点，生成面试转化回复"
+            GenerationMode.RESUME_FOLLOW_UP -> "研判简历查收状态，生成投后高转化回复"
         }
         val loadingText = TextView(this).apply {
             text = "正在${modeActionDesc}...\n（调用 $currentModel 极速生成中）"
@@ -706,7 +714,7 @@ class FloatingService : Service() {
         container.addView(loadingText)
 
         currentGenerationJob = serviceScope.launch {
-            val result = DeepSeekClient.generateGreetings(this@FloatingService, jdText, mode, chatHistory, latestMessage)
+            val result = DeepSeekClient.generateGreetings(this@FloatingService, jdText, mode, chatHistory, latestMessage, screenText, resumeStatus, elapsedTime)
             withContext(Dispatchers.Main) {
                 container.removeAllViews()
                 result.onSuccess { options ->
@@ -745,7 +753,7 @@ class FloatingService : Service() {
                             topMargin = (10 * density).toInt()
                         }
                         setOnClickListener {
-                            triggerAiGeneration(container, jdText, mode, chatHistory, latestMessage)
+                            triggerAiGeneration(container, jdText, mode, chatHistory, latestMessage, screenText, resumeStatus, elapsedTime)
                         }
                     }
                     errorCard.addView(errorView)
@@ -780,7 +788,7 @@ class FloatingService : Service() {
             gravity = Gravity.CENTER_VERTICAL
         }
 
-        val isHardcore = option.title.contains("硬核") || option.title.contains("攻坚") || option.title.contains("价值")
+        val isHardcore = option.title.contains("硬核") || option.title.contains("攻坚") || option.title.contains("价值") || option.title.contains("投后")
         val tagBg = if (isHardcore) Color.parseColor("#EFF6FF") else Color.parseColor("#ECFDF5")
         val tagColor = if (isHardcore) Color.parseColor("#1677FF") else Color.parseColor("#059669")
         val badgeText = when (mode) {
@@ -788,6 +796,7 @@ class FloatingService : Service() {
             GenerationMode.READ_UNREPLIED -> if (isHardcore) "攻坚深化" else "成效赋能"
             GenerationMode.UNREAD_NUDGE -> if (isHardcore) "价值补充" else "轻量触达"
             GenerationMode.IN_DEPTH_CHAT -> if (isHardcore) "专业答复" else "推进面试"
+            GenerationMode.RESUME_FOLLOW_UP -> "投后促转"
         }
 
         val tagView = TextView(this).apply {
@@ -821,7 +830,9 @@ class FloatingService : Service() {
         }
 
         val btnColor = if (isHardcore) Color.parseColor("#1677FF") else Color.parseColor("#059669")
-        val btnText = if (option.title.isNotBlank() && option.title != "精选破冰语") {
+        val btnText = if (option.title.contains("投后跟进")) {
+            "复制「推荐话术」并关闭"
+        } else if (option.title.isNotBlank() && option.title != "精选破冰语") {
             "复制「${option.title}」并关闭"
         } else {
             "复制此话术并关闭"
@@ -847,6 +858,30 @@ class FloatingService : Service() {
 
         card.addView(topRow)
         card.addView(bodyView)
+        if (option.tip.isNotBlank()) {
+            val tipBox = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding((10 * density).toInt(), (8 * density).toInt(), (10 * density).toInt(), (8 * density).toInt())
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#F1F5F9"))
+                    cornerRadius = 8 * density
+                }
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    bottomMargin = (12 * density).toInt()
+                }
+            }
+            val tipText = TextView(this).apply {
+                text = "【沟通建议】${option.tip}"
+                setTextColor(Color.parseColor("#475569"))
+                textSize = 11.5f
+                setLineSpacing(3f, 1.15f)
+            }
+            tipBox.addView(tipText)
+            card.addView(tipBox)
+        }
         card.addView(copyBtn)
         return card
     }
@@ -855,7 +890,7 @@ class FloatingService : Service() {
         dialogOverlayView?.let {
             try {
                 windowManager.removeView(it)
-            } catch (_: Exception) {}
+            } catch (e: Exception) {}
             dialogOverlayView = null
         }
     }
@@ -866,7 +901,7 @@ class FloatingService : Service() {
         floatingBallView?.let {
             try {
                 windowManager.removeView(it)
-            } catch (_: Exception) {}
+            } catch (e: Exception) {}
             floatingBallView = null
         }
         dismissDialog()

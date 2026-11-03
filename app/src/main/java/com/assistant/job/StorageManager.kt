@@ -8,7 +8,8 @@ enum class GenerationMode(val tabTitle: String, val badge: String) {
     FIRST_ICEBREAK("首次破冰", "初次开聊"),
     READ_UNREPLIED("已读未回", "二度攻坚"),
     UNREAD_NUDGE("未读唤醒", "轻量触达"),
-    IN_DEPTH_CHAT("深入沟通", "面试转化")
+    IN_DEPTH_CHAT("深入沟通", "面试转化"),
+    RESUME_FOLLOW_UP("简历跟进", "投后促转")
 }
 
 object StorageManager {
@@ -436,12 +437,68 @@ object StorageManager {
     }
 
 
+
+    val PROMPT_RESUME_FOLLOW_UP = """
+你是一名专业的求职沟通助手。根据招聘 JD、候选人简历、历史聊天记录和当前屏幕内容，判断 HR 索要简历后的沟通状态，并生成自然、专业、有推进价值的回复。
+
+【输入信息】
+- 岗位 JD：{{jdText}}
+- 候选人简历：{{resume}}
+- 历史聊天记录：{{chatHistory}}
+- 当前屏幕内容：{{screenText}}
+- 简历发送状态：{{resumeStatus}}
+- 距离发送简历的时间：{{elapsedTime}}
+
+【第一步：识别当前场景】
+
+从以下场景中选择最符合的一种：
+
+1. HR 刚刚索要简历，候选人准备发送。
+2. 候选人已经发送简历，等待 HR 查看。
+3. HR 已确认收到简历。
+4. HR 已查看简历，但暂未回复。
+5. 简历发送后，HR 继续询问工作经历或技术问题。
+6. HR 对候选人表现出兴趣，可能准备安排面试。
+7. 简历发送后长时间没有后续消息。
+
+不得将不同场景混为一谈。
+
+【第二步：生成沟通策略】
+
+- 刚发送简历：简洁告知已发送，并表达愿意补充项目细节。
+- 等待查看：不催促，不重复发送简历，不要求 HR 立即回复。
+- 已确认收到：适当补充与岗位最相关的项目经验。
+- 已读未回复：结合 JD 找出尚未表达的匹配优势，进行有价值的轻量跟进。
+- 继续询问：优先直接回答问题，再结合技术攻坚与交付成果展开。
+- 安排面试：表达积极态度，提供方便沟通的时间窗口。
+- 长时间无回复：结合自身优势进行极简唤醒，不纠缠、不卑微。
+
+【第三步：输出内容规范】
+
+必须严格且仅包含以下结构：
+
+【当前场景】
+（明确写出当前判断的场景名称，如：HR已查看简历但暂未回复）
+
+【推荐话术】
+（直接可发送的回复文本，语言自然、专业，不卑微、不催促，控制在 50-120 字以内）
+
+【沟通建议】
+（1-2 条当前阶段的沟通策略提示，例如：何时跟进、是否需要主动补充作品集等）
+
+严格禁止：
+- 严禁出现“您好还在吗”“方便看一下简历吗”等催促表达。
+- 严禁虚构简历中不存在的经历与数据。
+- 严禁输出多余的前言、结语、Markdown 代码块。
+""".trimIndent()
+
     fun getPromptForMode(context: Context, mode: GenerationMode): String {
         return when (mode) {
             GenerationMode.FIRST_ICEBREAK -> getCustomPrompt(context)
             GenerationMode.READ_UNREPLIED -> PROMPT_READ_UNREPLIED
             GenerationMode.UNREAD_NUDGE -> PROMPT_UNREAD_NUDGE
             GenerationMode.IN_DEPTH_CHAT -> PROMPT_IN_DEPTH_CHAT
+            GenerationMode.RESUME_FOLLOW_UP -> PROMPT_RESUME_FOLLOW_UP
         }
     }
 
