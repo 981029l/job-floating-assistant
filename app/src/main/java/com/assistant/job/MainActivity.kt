@@ -3027,9 +3027,9 @@ fun SettingsTab(
                             @Suppress("DEPRECATION")
                             context.packageManager.getPackageInfo(context.packageName, 0)
                         }
-                        pInfo.versionName ?: "1.3.7"
+                        pInfo.versionName ?: "1.3.8"
                     } catch (e: Exception) {
-                        "1.3.7"
+                        "1.3.8"
                     }
                 }
 
@@ -3583,7 +3583,7 @@ fun InterviewTab(
                             color = Color(0xFF0F172A)
                         )
                         Text(
-                            text = "结合目标 JD 痛点与您的真实项目经历，智能预测连环追问",
+                            text = "结合目标岗位核心职责与您的真实项目经历，智能预测连环追问",
                             fontSize = 11.5.sp,
                             color = Color(0xFF64748B)
                         )
