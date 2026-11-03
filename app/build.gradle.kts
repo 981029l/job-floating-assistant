@@ -11,8 +11,8 @@ android {
         applicationId = "com.assistant.job"
         minSdk = 26
         targetSdk = 34
-        versionCode = 15
-        versionName = "1.1.5"
+        versionCode = 16
+        versionName = "1.1.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -20,7 +20,19 @@ android {
         }
     }
 
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(

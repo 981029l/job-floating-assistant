@@ -41,7 +41,7 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.1.5-debug.apk
+          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.1.6-debug.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -54,18 +54,20 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.1.5
-          name: "AI求职悬浮助手 v1.1.5 (底部导航栏平滑横滑动效)"
+          tag_name: v1.1.6
+          name: "AI求职悬浮助手 v1.1.6 (固定全局签名/支持直接覆盖安装更新)"
           body: |
-            AI 求职悬浮助手 v1.1.5 体验升级：
-            1. 底部导航栏平滑移动切换：
-               - 采用 Jetpack Compose 官方 AnimatedContent 实现方向感知平滑横滑动画；
-               - 符合 Google Material Design 3 规范中的 Peer Destination Shared Axis X 动效标准；
-               - 左右切换自适应方向：向右前进时新视窗从右滑入，向左后退时新视窗从左滑入，搭配 280ms 缓动与透明度过渡；
-               - 零手势冲突，完全不影响 AI 设置页等内部组件的横向滚动与卡片交互。
-            2. 继承 v1.1.4 全部细节精修：
-               - 纯净真实空白档案录入态、移除死数据与生硬当前徽章、修复顶栏状态胶囊排版。
-          files: release_apk/JobAssistant-v1.1.5-debug.apk
+            AI 求职悬浮助手 v1.1.6 核心工程体验突破：
+            1. 彻底解决每次更新需卸载旧 App 的痛点：
+               - 仓库内置永久持久化签名密钥库（debug.keystore），使每次 GitHub Actions 云端编译出的 APK 均拥有完全一致的数字加密公钥与 SHA-256 指纹；
+               - 完美通过 Android 系统的 PackageManager 覆盖签名校验；
+               - 今后每一次升级只需直接点击「覆盖安装 / 更新」，本地保存的 API Key、自定义提示词、简历档案数据与设置 100% 完整保留，告别手动卸载。
+            2. 包含 v1.1.5 的全部底栏动效与交互优化：
+               - 底部导航栏平滑横滑动效（Material Design 3 Shared Axis X 规范）；
+               - 简历档案纯净空白录入引导态；
+               - 模型卡片高亮选中态；
+               - 顶部 Header 药丸排版防挤压展示。
+          files: release_apk/JobAssistant-v1.1.6-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
