@@ -231,21 +231,30 @@ class FloatingService : Service() {
             elevation = 28f
         }
 
-        // 顶栏（左上角明确关闭按钮 + 居中标题 + 右侧轻量关闭，防止误触）
+        // 顶栏（左侧标题 + 右上角标准关闭按钮）
         val headerLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding((10 * density).toInt(), (8 * density).toInt(), (10 * density).toInt(), (8 * density).toInt())
+            setPadding((12 * density).toInt(), (8 * density).toInt(), (10 * density).toInt(), (8 * density).toInt())
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#F0F5FF"))
                 cornerRadius = 16 * density
             }
         }
-        val closeBtnLeft = TextView(this).apply {
+        val titleView = TextView(this).apply {
+            text = "AI 定制打招呼语"
+            textSize = 14f
+            setTextColor(Color.parseColor("#1E293B"))
+            paint.isFakeBoldText = true
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val closeBtnRight = TextView(this).apply {
             text = "✕ 关闭"
             textSize = 12f
             setTextColor(Color.parseColor("#475569"))
             paint.isFakeBoldText = true
+            gravity = Gravity.CENTER
             setPadding((10 * density).toInt(), (5 * density).toInt(), (10 * density).toInt(), (5 * density).toInt())
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#E2E8F0"))
@@ -253,24 +262,6 @@ class FloatingService : Service() {
             }
             setOnClickListener { dismissDialog() }
         }
-        val titleView = TextView(this).apply {
-            text = "AI 定制打招呼语"
-            textSize = 14f
-            setTextColor(Color.parseColor("#1E293B"))
-            paint.isFakeBoldText = true
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        val closeBtnRight = TextView(this).apply {
-            text = "✕"
-            textSize = 14f
-            setTextColor(Color.parseColor("#94A3B8"))
-            paint.isFakeBoldText = true
-            gravity = Gravity.CENTER
-            setPadding((10 * density).toInt(), (5 * density).toInt(), (10 * density).toInt(), (5 * density).toInt())
-            setOnClickListener { dismissDialog() }
-        }
-        headerLayout.addView(closeBtnLeft)
         headerLayout.addView(titleView)
         headerLayout.addView(closeBtnRight)
         rootLayout.addView(headerLayout)

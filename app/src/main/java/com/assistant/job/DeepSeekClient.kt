@@ -304,7 +304,7 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
 
     private fun parseOptions(raw: String, mode: GenerationMode = GenerationMode.FIRST_ICEBREAK): List<GreetingOption> {
         val list = mutableListOf<GreetingOption>()
-        var cleaned = raw.trim()
+        var cleaned = raw.trim().replace("\r\n", "\n")
         if (cleaned.startsWith("```") && cleaned.endsWith("```")) {
             cleaned = cleaned.replace(Regex("^```[a-zA-Z]*\\n?"), "").replace(Regex("\\n?```$"), "").trim()
         }
@@ -371,8 +371,8 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
         }
 
         // 1. 优先按完整多行标题进行正则切分（容错各种标记如 ===风格一===、### 风格一、[风格一] 等）
-        val p1 = Regex("^[#*\\-=\\s【]*?(?:风格一|方案一|风格 1|方案 1)[^\\n]*$", RegexOption.MULTILINE)
-        val p2 = Regex("^[#*\\-=\\s【]*?(?:风格二|方案二|风格 2|方案 2)[^\\n]*$", RegexOption.MULTILINE)
+        val p1 = Regex("^[#*\\-=\\s【\\d.、]*?(?:风格一|方案一|风格 1|方案 1|第一种风格|第一种方案)[^\\n]*$", RegexOption.MULTILINE)
+        val p2 = Regex("^[#*\\-=\\s【\\d.、]*?(?:风格二|方案二|风格 2|方案 2|第二种风格|第二种方案)[^\\n]*$", RegexOption.MULTILINE)
 
         val m1 = p1.find(cleaned)
         val m2 = p2.find(cleaned)

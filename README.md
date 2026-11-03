@@ -43,7 +43,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.2.7-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.4/JobAssistant-v1.2.7-debug.apk)
+- **最新正式版直链**：[JobAssistant-v1.2.8-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.8/JobAssistant-v1.2.8-debug.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -104,6 +104,10 @@ job-floating-assistant/
 
 ## 版本演进记录
 
+- **v1.2.8**：
+  - 悬浮窗顶栏精简化重构：彻底移除左侧多余冗余的关闭按钮，左侧规范展示「AI 定制打招呼语」模块标题，右上角保留规范优雅的「✕ 关闭」触控药丸，消除双关闭按钮排版怪异问题；
+  - 双风格正则解析鲁棒性升级：自动规范 CRLF 换行符，增强编号标题（如「1. 风格一」）兼容切分，确保模型各种格式下均能稳定分出两张独立卡片与独立复制按钮；
+  - 继承应用内全自动更新与持久化签名。
 - **v1.2.7**：
   - 应用内全自动检查更新与一键覆盖安装升级：彻底告别用户手动前往 GitHub 寻找并下载 APK 的繁琐流程；
   - 启动静默探测 + 设置页手动检查双通道：有新版本自动弹出优雅更新卡片，设置页可随时一键主动查询；
