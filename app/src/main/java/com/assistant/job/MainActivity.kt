@@ -2286,13 +2286,6 @@ fun ProfileTab(
                     }
                 }
             }
-                                color = Color(0xFF334155),
-                                lineHeight = 17.sp
-                            )
-                        }
-                    }
-                }
-            }
         }
 
         // 4. 完整简历原始文本全局只读与补充编辑器
