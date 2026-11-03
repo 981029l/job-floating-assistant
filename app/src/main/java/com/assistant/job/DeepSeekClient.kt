@@ -257,9 +257,19 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
                         put("role", "system")
                         put("content", basePrompt)
                     })
+                    val userPromptContent = """
+【核心准则】：你正在充当求职者全自动开聊的话筒。请严格执行【先审判目标岗位JD真实痛点 -> 再从候选人简历中按需提取对口经验】的绝对单向流程。
+- 目标 JD 未提及的领域（如未明确提及 AI/大模型），候选人即使有对应经历也必须绝对静默，严禁在开场白中无中生有！
+
+【目标岗位 JD（唯一事实源，以它为准）】：
+${jdText.ifBlank { "（通用技术岗位要求）" }}
+
+【候选人简历储备池（按需取药，未提领域禁止强推）】：
+${resume.ifBlank { "（未录入完整简历）" }}
+""".trimIndent()
                     put(JSONObject().apply {
                         put("role", "user")
-                        put("content", "【目标岗位 JD 信息】：\n$jdText\n\n【候选人简历】：\n$resume")
+                        put("content", userPromptContent)
                     })
                 }
             }
@@ -295,14 +305,14 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
                 .getString("content")
                 .trim()
 
-            val options = parseOptions(content, mode)
+            val options = parseOptions(content, mode, jdText)
             Result.success(options)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    private fun parseOptions(raw: String, mode: GenerationMode = GenerationMode.FIRST_ICEBREAK): List<GreetingOption> {
+    private fun parseOptions(raw: String, mode: GenerationMode = GenerationMode.FIRST_ICEBREAK, jdText: String = ""): List<GreetingOption> {
         val list = mutableListOf<GreetingOption>()
         var cleaned = raw.trim().replace("\r\n", "\n")
         if (cleaned.startsWith("```") && cleaned.endsWith("```")) {
@@ -409,10 +419,10 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
 
         val fallbackTitle = if (mode == GenerationMode.IN_DEPTH_CHAT) "面试转化回复" else "精选破冰语"
         list.add(GreetingOption(fallbackTitle, cleaned))
-        return list.map { it.copy(text = sanitizeGreetingText(it.text, mode)) }
+        return list.map { it.copy(text = sanitizeGreetingText(it.text, mode, jdText)) }
     }
 
-    private fun sanitizeGreetingText(text: String, mode: GenerationMode): String {
+    private fun sanitizeGreetingText(text: String, mode: GenerationMode, jdText: String = ""): String {
         var result = text.trim()
         if (result.isBlank()) return result
 
@@ -429,6 +439,24 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
             .replace("尊敬的HR", "您好")
             .replace("尊敬的面试官", "您好")
             .replace("看到看到", "看到")
+
+        // 物理防护线：若目标 JD 完全没有提及 AI/大模型相关内容，而生成话术第一句发生幻觉
+        val jdHasAi = jdText.contains("AI", ignoreCase = true) || 
+                      jdText.contains("大模型") || 
+                      jdText.contains("人工智能") || 
+                      jdText.contains("智能体") || 
+                      jdText.contains("Agent", ignoreCase = true)
+
+        if (!jdHasAi && mode == GenerationMode.FIRST_ICEBREAK) {
+            result = result
+                .replace("多端产品与 AI 能力的前端落地", "多端产品与交互架构的前端落地")
+                .replace("多端产品与 AI 能力的落地", "多端产品与交互架构的落地")
+                .replace("多端产品与 AI 能力", "多端产品与交互架构")
+                .replace("AI 能力的前端落地", "核心业务的前端落地")
+                .replace("AI 能力的落地", "核心业务的落地")
+                .replace("AI 业务的前端落地", "核心业务的前端落地")
+                .replace("做 AI 相关", "做核心业务")
+        }
 
         // 首次破冰若首句缺失礼貌尊称，自动补全「您好，」
         if (mode == GenerationMode.FIRST_ICEBREAK) {
@@ -665,7 +693,8 @@ $rawText
             }
 
             val systemPrompt = """你是一位顶尖的大厂技术专家、技术合伙人与资深技术面试官。
-请对比【目标岗位 JD】与【候选人真实经历】，站在面试官的角度，生成 4 到 6 道真实面试中最容易被连环追问的高价值考题。
+请严格遵循【先从目标岗位 JD 提炼业务团队眼下真实的痛点与难点 -> 再结合候选人经历预测连环追问】。若 JD 明确未涉及 AI、大模型等领域，绝对严禁押不相干的偏门考题！
+请站在面试官的角度，生成 4 到 6 道真实面试中最容易被连环追问的高价值考题。
 
 【考核维度必须涵盖】：
 1. 技术深水区追问：针对 JD 最硬核的技术要求，考察技术底层原理、性能优化或技术攻坚细节；
