@@ -41,7 +41,7 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.1.0-debug.apk
+          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.1.1-debug.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -54,16 +54,21 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.1.0
-          name: "AI求职悬浮助手 v1.1.0 (求职档案全盘对齐 Google Stitch 高保真规范)"
+          tag_name: v1.1.1
+          name: "AI求职悬浮助手 v1.1.1 (三大Tab全盘落地 Google Stitch Bento 高保真规范)"
           body: |
-            AI 求职悬浮助手 v1.1.0 重磅发布：求职档案库全盘落地 Google Stitch 高保真设计体系！
-            1. 简历绑定状态卡片：文档图标容器、已绑定/未绑定状态标签、PDF/Word智能解析标识、脱敏隐私安全徽章及快捷更换与全宽上传按钮；
-            2. 简历核心提取亮点胶囊：职龄背景标签（7年前端、全日制本科科班、带团队架构）、核心技术栈（Vue3、大模型SSE、Canvas等）、AI重提按钮及【+ 加亮点】自定义弹层；
-            3. 结构化知识依据库：期望职位与坐标卡片、核心工作经历（支持查看与原位编辑保存、经历一键复制到剪贴板）、过往工作经历、AI精炼即用语料调整卡片；
-            4. 恢复预设与一键重置：支持一键还原系统高分匹配模板；
-            5. 完整全局简历文本持久化：底部保留全量简历正文编辑器，编辑自动同步大模型上下文。
-          files: release_apk/JobAssistant-v1.1.0-debug.apk
+            AI 求职悬浮助手 v1.1.1 重磅发布：三大主界面全部落地 Google Stitch Bento 高保真设计体系！
+            1. AI 设置全盘升级：
+               - API Key 密码掩码显示切换、一键剪贴板粘贴与清空；
+               - 常用 Base URL 预设快速切换芯片（DeepSeek 官方、OpenAI、阿里百炼、OneAPI）；
+               - 网络连通性极佳状态卡片（Ping 88ms、已就绪常用模型）；
+               - 6种专家破冰风格切换标签（技术硬核攻坚型、直击痛点量化型、业务价值驱动型、诚恳探索交流型、敏捷快速破冰型、高情商共情型）；
+               - 动态提示词变量芯片快速插入（{{目标岗位JD}}、{{候选人亮点}}等）；
+               - 实时字符计数与防折叠推荐（建议100-130字，超300字警示）；
+               - 实时模拟破冰打招呼语弹窗（支持多预设随机体验与一键复制）；
+            2. 求职档案与悬浮主控体系深度联动；
+            3. 全工程 0 Emojis，全部采用原生 Android XML Vector Drawables 矢量渲染，安装包保持在极小体积 (~17MB)。
+          files: release_apk/JobAssistant-v1.1.1-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

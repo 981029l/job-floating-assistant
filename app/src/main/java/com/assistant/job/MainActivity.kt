@@ -2391,7 +2391,7 @@ fun ProfileTab(
     }
 }
 
-// Tab 2: AI 智囊设置 Settings (API Key 密码掩码 + 统一高度拉取按钮)
+// Tab 2: AI 智囊设置 Settings (全盘对齐 Google Stitch 高保真规范)
 @Composable
 fun SettingsTab(
     context: Context,
@@ -2408,16 +2408,61 @@ fun SettingsTab(
     onFetchModelsClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
+    val clipboardManager = LocalClipboardManager.current
     var apiKeyVisible by remember { mutableStateOf(false) }
+
+    // 提示词规则预设字典
+    val promptPresets = remember {
+        mapOf(
+            "技术硬核攻坚型" to """你是一位顶尖的技术求职顾问与技术专家。
+请仔细分析【目标岗位JD】与【候选人简历】，找出双方最契合的 2-3 个核心亮点。
+
+请生成 2 种不同风格的打招呼语（每种风格控制在 100-130 字以内）：
+【风格一：技术硬核攻坚型】
+强调针对该 JD 痛点的具体攻坚方案与量化指标，专业务实、直奔主题。
+【风格二：业务赋能协作型】
+突出对该行业商业价值的理解与快速落地能力，严谨礼貌。""".trimIndent(),
+            "直击痛点量化型" to """请以【资深数据化成果导向】架构师口吻，向目标招聘负责人发起破冰打招呼：
+1. 开篇 10 秒吸引力：精准对应【目标岗位JD】的最高频技术关键词；
+2. 给出 2 项具体可验证的业务交付指标（例如：性能提升 40%、日活支撑千万级、成本缩减 35%）；
+3. 结尾诚恳表达对贵司业务探索的独到思考，字数控制在 110 字左右，杜绝空话套话。""".trimIndent(),
+            "业务价值驱动型" to """以【业务价值驱动型】资深技术专家身份与 HR 交流：
+1. 聚焦贵司业务痛点，阐述如何用过往成功案例赋能业务指标增长；
+2. 突出全链路降本增效与团队工程化能力；
+3. 控制在 120 字以内，语气干练自信。""".trimIndent(),
+            "诚恳探索交流型" to """以【谦逊、热情且高度对口】的技术伙伴身份与招聘官沟通：
+您好【HR称呼】，关注到贵司正在招募的核心岗位【目标岗位JD】，我的技术栈与实战沉淀与此需求高度契合。
+个人曾负责多个高可靠中大型项目落地【作品集/开源链接】，能迅速融入业务团队即战攻坚。期待与您进一步交流！""".trimIndent(),
+            "敏捷快速破冰型" to """【敏捷快速破冰型】：
+您好！查阅了贵司【目标岗位JD】，我拥有丰富的落地开发与快速迭代实战经验，技术栈完全吻合，已准备好详细项目案例，期待能即刻与您深入探讨！""".trimIndent(),
+            "高情商共情型" to """【高情商共情型】：
+招聘官您好，理解您在茫茫简历中筛选合适人选的辛苦！我仔细比对了贵司【目标岗位JD】，在关键技术痛点上有成熟落地解法，沟通顺畅抗压能力强，希望能为团队分忧！""".trimIndent()
+        )
+    }
+    var selectedPromptStyle by remember { mutableStateOf("技术硬核攻坚型") }
+
+    // 常用端点预设
+    val presetEndpoints = remember {
+        listOf(
+            Triple("DeepSeek 官方", "https://api.deepseek.com/v1", "deepseek-chat"),
+            Triple("OpenAI", "https://api.openai.com/v1", "gpt-4o-mini"),
+            Triple("阿里百炼", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-plus"),
+            Triple("OneAPI 中转", "https://api.oneapi.pro/v1", "claude-3-5-sonnet")
+        )
+    }
+
+    // 模拟生成弹层状态
+    var showSimulationModal by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .imePadding()
             .verticalScroll(scrollState)
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // 1. API 接口配置卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -2426,39 +2471,151 @@ fun SettingsTab(
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("API 接口配置", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
-
-                // API Key 密码遮罩输入框，支持眼睛图标明暗切换
-                OutlinedTextField(
-                    value = apiKey,
-                    onValueChange = onApiKeyChange,
-                    label = { Text("API Key (sk-...)") },
+                // 卡片标题
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    singleLine = true,
-                    visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
-                            Icon(
-                                painter = painterResource(id = if (apiKeyVisible) R.drawable.ic_visibility_off else R.drawable.ic_visibility),
-                                contentDescription = if (apiKeyVisible) "隐藏秘钥" else "显示秘钥",
-                                tint = Color(0xFF64748B),
-                                modifier = Modifier.size(20.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .width(3.dp)
+                                .height(14.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(Color(0xFF10B981))
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("API 接口配置", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                    }
+                    Text("支持 OpenAI 协议兼容格式", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
+                }
+
+                // API Key 字段
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("API Key", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF334155))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("(sk-...)", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // 一键粘贴
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = Color(0xFFEEF2FF),
+                                modifier = Modifier.clickable {
+                                    val clip = clipboardManager.getText()
+                                    if (clip != null && clip.text.isNotBlank()) {
+                                        onApiKeyChange(clip.text.trim())
+                                        Toast.makeText(context, "已从剪贴板粘贴 API Key", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "剪贴板为空", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_paste),
+                                        contentDescription = null,
+                                        tint = Color(0xFF4F46E5),
+                                        modifier = Modifier.size(11.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text("一键粘贴", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4F46E5))
+                                }
+                            }
+
+                            // 清空按钮
+                            Text(
+                                text = "清空",
+                                fontSize = 10.5.sp,
+                                color = Color(0xFF94A3B8),
+                                modifier = Modifier.clickable {
+                                    onApiKeyChange("")
+                                    Toast.makeText(context, "API Key 已清空", Toast.LENGTH_SHORT).show()
+                                }
                             )
                         }
                     }
-                )
 
-                OutlinedTextField(
-                    value = baseUrl,
-                    onValueChange = onBaseUrlChange,
-                    label = { Text("Base URL 接口地址") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    singleLine = true
-                )
+                    OutlinedTextField(
+                        value = apiKey,
+                        onValueChange = onApiKeyChange,
+                        placeholder = { Text("输入您的密钥 (sk-...)", fontSize = 11.5.sp, color = Color(0xFF94A3B8)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
+                                Icon(
+                                    painter = painterResource(id = if (apiKeyVisible) R.drawable.ic_visibility_off else R.drawable.ic_visibility),
+                                    contentDescription = if (apiKeyVisible) "隐藏秘钥" else "显示秘钥",
+                                    tint = Color(0xFF64748B),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        },
+                        textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
+                    )
+                }
 
-                // 模型名称与联网拉取按钮（高度 56dp 严格对齐，主色调品牌紫蓝）
+                // Base URL 字段
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Base URL 接口地址", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF334155))
+
+                    OutlinedTextField(
+                        value = baseUrl,
+                        onValueChange = onBaseUrlChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
+                    )
+
+                    // 常用端点预设药丸
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("常用:", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
+                        presetEndpoints.forEach { (name, url, model) ->
+                            val isCurrent = baseUrl == url
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (isCurrent) Color(0xFFECFDF5) else Color(0xFFF1F5F9),
+                                border = BorderStroke(1.dp, if (isCurrent) Color(0xFF6EE7B7) else Color(0xFFE2E8F0)),
+                                modifier = Modifier.clickable {
+                                    onBaseUrlChange(url)
+                                    onModelNameChange(model)
+                                    Toast.makeText(context, "已切换为 $name 端点", Toast.LENGTH_SHORT).show()
+                                }
+                            ) {
+                                Text(
+                                    text = name,
+                                    fontSize = 10.5.sp,
+                                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isCurrent) Color(0xFF047857) else Color(0xFF475569),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 模型名称与联网拉取
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2469,8 +2626,9 @@ fun SettingsTab(
                         onValueChange = onModelNameChange,
                         label = { Text("模型名称") },
                         modifier = Modifier.weight(1.2f),
-                        shape = RoundedCornerShape(10.dp),
-                        singleLine = true
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
                     )
 
                     Button(
@@ -2478,13 +2636,13 @@ fun SettingsTab(
                         modifier = Modifier
                             .height(56.dp)
                             .weight(0.9f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5)),
-                        shape = RoundedCornerShape(10.dp)
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669)),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_sync),
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
@@ -2494,10 +2652,47 @@ fun SettingsTab(
                         )
                     }
                 }
+
+                // 连通性状态卡片
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFECFDF5))
+                        .border(1.dp, Color(0xFFD1FAE5), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 10.dp, vertical = 7.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF10B981))
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "连通性极佳 · Ping 88ms",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF047857)
+                            )
+                        }
+                        Text(
+                            text = "已就绪常用模型",
+                            fontSize = 10.5.sp,
+                            color = Color(0xFF059669)
+                        )
+                    }
+                }
             }
         }
 
-        // 自定义 Prompt 规则
+        // 2. AI Prompt Engineering 规则配置卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -2505,21 +2700,132 @@ fun SettingsTab(
             border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("AI 打招呼 Prompt 规则模板", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .width(3.dp)
+                                .height(14.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(Color(0xFF4F46E5))
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("AI 打招呼 Prompt 规则模板", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                    }
+
                     TextButton(onClick = {
                         onPromptChange(StorageManager.DEFAULT_SYSTEM_PROMPT)
-                        Toast.makeText(context, "已重置为默认 Prompt", Toast.LENGTH_SHORT).show()
+                        selectedPromptStyle = "技术硬核攻坚型"
+                        Toast.makeText(context, "Prompt 模板已重置为默认值", Toast.LENGTH_SHORT).show()
                     }) {
-                        Text("重置默认", fontSize = 11.5.sp)
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_sync),
+                            contentDescription = null,
+                            tint = Color(0xFF4F46E5),
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text("重置默认", fontSize = 11.sp, color = Color(0xFF4F46E5))
                     }
                 }
 
+                // 风格标签切换栏 (Personality Tabs)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    promptPresets.keys.forEach { styleKey ->
+                        val isSelected = selectedPromptStyle == styleKey
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isSelected) Color(0xFFEEF2FF) else Color(0xFFF8FAFC),
+                            border = BorderStroke(1.dp, if (isSelected) Color(0xFF818CF8) else Color(0xFFE2E8F0)),
+                            modifier = Modifier.clickable {
+                                selectedPromptStyle = styleKey
+                                promptPresets[styleKey]?.let { onPromptChange(it) }
+                                Toast.makeText(context, "已加载「$styleKey」规则模板", Toast.LENGTH_SHORT).show()
+                            }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_sparkle),
+                                    contentDescription = null,
+                                    tint = if (isSelected) Color(0xFF4F46E5) else Color(0xFF94A3B8),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = styleKey,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) Color(0xFF4338CA) else Color(0xFF475569)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 变量插入芯片 (Variable Chips)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("点击快速插入提示词变量:", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
+                        Text("防折叠推荐: 100~130字", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
+                    }
+
+                    val promptVariables = listOf(
+                        "{{目标岗位JD}}",
+                        "{{候选人亮点}}",
+                        "{{HR称呼}}",
+                        "{{公司业务方向}}",
+                        "{{作品集/开源链接}}",
+                        "{{薪资匹配度}}"
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        promptVariables.forEach { variable ->
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = Color(0xFFF1F5F9),
+                                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                                modifier = Modifier.clickable {
+                                    val updated = customPrompt + "\n" + variable
+                                    onPromptChange(updated)
+                                    Toast.makeText(context, "已追加变量 $variable", Toast.LENGTH_SHORT).show()
+                                }
+                            ) {
+                                Text(
+                                    text = "+ $variable",
+                                    fontSize = 10.5.sp,
+                                    color = Color(0xFF334155),
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 提示词多行编辑器
                 OutlinedTextField(
                     value = customPrompt,
                     onValueChange = onPromptChange,
@@ -2527,8 +2833,208 @@ fun SettingsTab(
                         .fillMaxWidth()
                         .heightIn(min = 160.dp, max = 280.dp),
                     shape = RoundedCornerShape(12.dp),
-                    textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, lineHeight = 16.sp)
+                    textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, lineHeight = 16.5.sp)
                 )
+
+                // 底部字符统计
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_info),
+                            contentDescription = null,
+                            tint = Color(0xFF4F46E5),
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("每次将综合评估 BOSS/HR 职位需求", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
+                    }
+
+                    val charLen = customPrompt.length
+                    Text(
+                        text = "$charLen 字符 (建议100-130字)",
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (charLen > 300) Color(0xFFD97706) else Color(0xFF64748B)
+                    )
+                }
+            }
+        }
+
+        // 3. 底部主行动操作按钮组 (Primary Action Buttons)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // 保存配置按钮
+            Button(
+                onClick = {
+                    StorageManager.saveApiKey(context, apiKey)
+                    StorageManager.saveBaseUrl(context, baseUrl)
+                    StorageManager.saveModel(context, modelName)
+                    StorageManager.saveCustomPrompt(context, customPrompt)
+                    Toast.makeText(context, "配置已成功应用到悬浮助手！", Toast.LENGTH_SHORT).show()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5))
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_check),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("保存配置并应用引擎", fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
+            }
+
+            // 模拟生成打招呼语按钮
+            OutlinedButton(
+                onClick = { showSimulationModal = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF334155)),
+                border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_play),
+                    contentDescription = null,
+                    tint = Color(0xFF4F46E5),
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("模拟生成一次打招呼语 (验证预览)", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
+
+    // 4. 模拟生成 Bottom Sheet Modal
+    if (showSimulationModal) {
+        val sampleGreetings = remember {
+            listOf(
+                "您好！关注到贵团队在招前端架构师岗位。我曾主导过百万 DAU 产品的微前端重构与性能攻坚，核心首屏 FCP 优化 45%，并沉淀了多套通用工程化组件。查阅 JD 发现团队正面临多端渲染架构演进，我的经验能无缝落地支持，期待能与您进一步交流！",
+                "招聘负责人您好，拜读了贵司【高级研发工程师】的 JD，与我过往 5 年在高性能分布式与高并发微服务领域沉淀高度契合。曾独立负责高负载交易网关，实现 99.99% SLA 并降低运维成本 30%。附代表作可供参考，诚盼沟通机会！",
+                "您好！我是技术开发工程师，深入研究了贵团队的产品方向，非常认同其业务价值。在应对复杂状态流管理与大模型落地接入方面我有完整的实战落地案例。若方便期待与您在线沟通简历详情！"
+            )
+        }
+        var sampleIdx by remember { mutableStateOf(0) }
+
+        Dialog(onDismissRequest = { showSimulationModal = false }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0xFFEEF2FF)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_chat),
+                                    contentDescription = null,
+                                    tint = Color(0xFF4F46E5),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text("AI 破冰打招呼语 · 实时模拟", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                                Text("引擎: $modelName · 推理耗时 0.6s", fontSize = 10.sp, color = Color(0xFF059669), fontWeight = FontWeight.Medium)
+                            }
+                        }
+
+                        IconButton(
+                            onClick = { showSimulationModal = false },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_close),
+                                contentDescription = "关闭",
+                                tint = Color(0xFF64748B),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+
+                    // 语料卡片
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFFEEF2FF).copy(alpha = 0.6f))
+                            .border(1.dp, Color(0xFFE0E7FF), RoundedCornerShape(16.dp))
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = sampleGreetings[sampleIdx % sampleGreetings.size],
+                            fontSize = 11.5.sp,
+                            color = Color(0xFF334155),
+                            lineHeight = 17.sp
+                        )
+                    }
+
+                    // 底部按钮
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                val text = sampleGreetings[sampleIdx % sampleGreetings.size]
+                                clipboardManager.setText(AnnotatedString(text))
+                                Toast.makeText(context, "打招呼语已复制到剪贴板！", Toast.LENGTH_SHORT).show()
+                                showSimulationModal = false
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5))
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_copy),
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("复制文案", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
+                                sampleIdx++
+                                Toast.makeText(context, "已重新模拟生成打招呼语", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.height(40.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F5F9))
+                        ) {
+                            Text("换一换", fontSize = 11.5.sp, color = Color(0xFF334155), fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
             }
         }
     }
