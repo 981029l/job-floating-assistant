@@ -362,7 +362,7 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
             }
         }
         val (title1, title2) = when (mode) {
-            GenerationMode.FIRST_ICEBREAK -> Pair("技术硬核型", "全面匹配型")
+            GenerationMode.FIRST_ICEBREAK -> Pair("业务痛点切入型", "技术即战力型")
             GenerationMode.READ_UNREPLIED -> Pair("技术攻坚深化型", "业务成效赋能型")
             GenerationMode.UNREAD_NUDGE -> Pair("岗位价值补充型", "自然轻量触达型")
             GenerationMode.IN_DEPTH_CHAT -> Pair("专业答复型", "面试推进型")
