@@ -113,14 +113,42 @@ fun MainScreen() {
             isParsingResume = true
             scope.launch {
                 val result = ResumeParser.parseResumeUri(context, uri)
-                isParsingResume = false
                 result.onSuccess { parsedText ->
                     resumeContent = parsedText
                     StorageManager.saveResume(context, parsedText)
                     uploadedFileName = ResumeParser.getFileName(context, uri)
-                    Toast.makeText(context, "成功导入简历文件", Toast.LENGTH_SHORT).show()
+
+                    val ak = StorageManager.getApiKey(context)
+                    if (ak.isNotBlank()) {
+                        Toast.makeText(context, "文件读取成功，正在使用 AI 深度解析意向与经历...", Toast.LENGTH_SHORT).show()
+                        val structRes = DeepSeekClient.extractStructuredResume(context, parsedText)
+                        isParsingResume = false
+                        structRes.onSuccess { structured ->
+                            if (structured.targetRole.isNotBlank()) {
+                                StorageManager.saveTargetRole(context, structured.targetRole)
+                            }
+                            if (structured.targetSalaryCity.isNotBlank()) {
+                                StorageManager.saveTargetSalaryCity(context, structured.targetSalaryCity)
+                            }
+                            if (structured.coreExperience.isNotBlank()) {
+                                StorageManager.saveExp1(context, structured.coreExperience)
+                            }
+                            if (structured.aiSummary.isNotBlank()) {
+                                StorageManager.saveAiSummary(context, structured.aiSummary)
+                            }
+                            // 触发状态响应
+                            resumeContent = parsedText
+                            Toast.makeText(context, "AI 解析完成，已自动填充求职意向与工作经历", Toast.LENGTH_SHORT).show()
+                        }.onFailure {
+                            Toast.makeText(context, "简历文本已导入 (AI 提取经历失败: ${it.message})", Toast.LENGTH_LONG).show()
+                        }
+                    } else {
+                        isParsingResume = false
+                        Toast.makeText(context, "简历文本导入成功！配置 API Key 后可一键 AI 解析意向与经历", Toast.LENGTH_LONG).show()
+                    }
                 }.onFailure { err ->
-                    Toast.makeText(context, "解析失败: ${err.message}", Toast.LENGTH_LONG).show()
+                    isParsingResume = false
+                    Toast.makeText(context, "导入失败: ${err.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -1520,6 +1548,18 @@ fun ProfileTab(
 
     var showAddTagDialog by remember { mutableStateOf(false) }
     var newTagInput by remember { mutableStateOf("") }
+    var isExtractingAll by remember { mutableStateOf(false) }
+
+    LaunchedEffect(resumeContent) {
+        targetRole = StorageManager.getTargetRole(context)
+        targetSalaryCity = StorageManager.getTargetSalaryCity(context)
+        exp1Content = StorageManager.getExp1(context)
+        aiSummary = StorageManager.getAiSummary(context)
+        draftRole = targetRole
+        draftSalaryCity = targetSalaryCity
+        draftExp1 = exp1Content
+        draftSummary = aiSummary
+    }
 
     Column(
         modifier = Modifier
@@ -2296,7 +2336,7 @@ fun ProfileTab(
                     onValueChange = onResumeChange,
                     placeholder = {
                         Text(
-                            text = "可在此处粘贴您的个人简历详细正文、专业经历或项目难点，或者通过顶部按钮直接导入手机文件...",
+                            text = "可在此外粘贴您的个人简历详细正文、专业经历或项目难点，或者通过顶部按钮直接导入手机文件...",
                             fontSize = 11.5.sp,
                             color = Color(0xFF94A3B8),
                             lineHeight = 16.sp
@@ -2306,15 +2346,70 @@ fun ProfileTab(
                         .fillMaxWidth()
                         .heightIn(min = 140.dp, max = 260.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFFF8FAFC),
-                        unfocusedContainerColor = Color(0xFFF8FAFC),
-                        focusedBorderColor = Color(0xFF4F46E5),
-                        unfocusedBorderColor = Color(0xFFE2E8F0)
-                    ),
                     textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, lineHeight = 16.sp)
                 )
-            }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = {
+                            val ak = StorageManager.getApiKey(context)
+                            if (ak.isBlank()) {
+                                Toast.makeText(context, "请先在【AI设置】配置 API Key", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            if (resumeContent.isBlank()) {
+                                Toast.makeText(context, "请先在此输入或粘贴简历正文", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            isExtractingAll = true
+                            scope.launch {
+                                val res = DeepSeekClient.extractStructuredResume(context, resumeContent)
+                                isExtractingAll = false
+                                res.onSuccess { data ->
+                                    if (data.targetRole.isNotBlank()) {
+                                        targetRole = data.targetRole
+                                        draftRole = data.targetRole
+                                        StorageManager.saveTargetRole(context, data.targetRole)
+                                    }
+                                    if (data.targetSalaryCity.isNotBlank()) {
+                                        targetSalaryCity = data.targetSalaryCity
+                                        draftSalaryCity = data.targetSalaryCity
+                                        StorageManager.saveTargetSalaryCity(context, data.targetSalaryCity)
+                                    }
+                                    if (data.coreExperience.isNotBlank()) {
+                                        exp1Content = data.coreExperience
+                                        draftExp1 = data.coreExperience
+                                        StorageManager.saveExp1(context, data.coreExperience)
+                                    }
+                                    if (data.aiSummary.isNotBlank()) {
+                                        aiSummary = data.aiSummary
+                                        draftSummary = data.aiSummary
+                                        StorageManager.saveAiSummary(context, data.aiSummary)
+                                    }
+                                    Toast.makeText(context, "AI 智能解析成功，已自动填入意向与经历", Toast.LENGTH_SHORT).show()
+                                }.onFailure { err ->
+                                    Toast.makeText(context, "AI 解析失败: ${err.message}", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5)),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 7.dp),
+                        enabled = !isExtractingAll
+                    ) {
+                        Icon(painter = painterResource(id = R.drawable.ic_sparkle), contentDescription = null, modifier = Modifier.size(13.dp), tint = Color.White)
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = if (isExtractingAll) "AI 正在全盘提取意向与经历..." else "AI 一键智能解析并填入全案",
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }            }
         }
     }
 }
