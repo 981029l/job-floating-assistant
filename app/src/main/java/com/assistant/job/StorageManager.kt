@@ -10,10 +10,12 @@ object StorageManager {
     private const val KEY_MODEL = "model"
     private const val KEY_RESUME = "resume_content"
     private const val KEY_PROMPT = "custom_prompt"
+    private const val KEY_BUBBLE_SIZE = "bubble_size_dp"
 
     const val DEFAULT_BASE_URL = "https://api.deepseek.com/v1"
-    const val DEFAULT_MODEL = "deepseek-chat"
+    const val DEFAULT_MODEL = "deepseek-flash"
     const val DEFAULT_RESUME = ""
+    const val DEFAULT_BUBBLE_SIZE = 56
 
     val DEFAULT_SYSTEM_PROMPT = """
 你是一位顶尖的技术求职顾问与技术专家。
@@ -76,5 +78,13 @@ object StorageManager {
     fun getCustomPrompt(context: Context): String {
         val prompt = getPrefs(context).getString(KEY_PROMPT, "")
         return if (prompt.isNullOrBlank()) DEFAULT_SYSTEM_PROMPT else prompt
+    }
+
+    fun saveBubbleSize(context: Context, sizeDp: Int) {
+        getPrefs(context).edit().putInt(KEY_BUBBLE_SIZE, sizeDp).apply()
+    }
+
+    fun getBubbleSize(context: Context): Int {
+        return getPrefs(context).getInt(KEY_BUBBLE_SIZE, DEFAULT_BUBBLE_SIZE)
     }
 }

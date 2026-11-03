@@ -100,7 +100,8 @@ class FloatingService : Service() {
         }
 
         val density = resources.displayMetrics.density
-        val ballSize = (64 * density).toInt()
+        val bubbleDp = StorageManager.getBubbleSize(this)
+        val ballSize = (bubbleDp * density).toInt()
 
         val params = WindowManager.LayoutParams(
             ballSize,
