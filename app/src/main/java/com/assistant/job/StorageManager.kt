@@ -23,12 +23,12 @@ object StorageManager {
     const val DEFAULT_RESUME = ""
     const val DEFAULT_BUBBLE_SIZE = 56
 
-    const val DEFAULT_TARGET_ROLE = "前端开发工程师"
-    const val DEFAULT_TARGET_SALARY_CITY = "15-20K · 深圳"
-    const val DEFAULT_EXP1 = "• 负责企业级 AI 对话工作台从 0 到 1 架构构建，攻克 SSE 流式数据长连接中断补偿与高频 Markdown 渲染卡顿 痛点。\n• 主导微前端改造与 Vite 打包加速方案，使得构建效率提升约 45%。"
-    const val DEFAULT_EXP2 = "• 核心业务「爱球直播平台」多端同构重构，基于 Canvas 实现高拟真百万级弹幕互动引擎与低延迟播放流渲染控制。"
-    const val DEFAULT_AI_SUMMARY = "“您好！7年前端全栈工程实践经验，精通 Vue3、TypeScript 与复杂前端性能工程。近期主导高频大模型 SSE 及音视频 Canvas 渲染业务，具有成熟高并发落地经验，与贵司该岗位要求高度匹配，期盼进一步交流！”"
-    const val DEFAULT_CUSTOM_TAGS = "Vue3 + TS,大模型 SSE 流式,直播 Canvas 渲染,React 18 全家桶,Vite 性能极致调优"
+    const val DEFAULT_TARGET_ROLE = ""
+    const val DEFAULT_TARGET_SALARY_CITY = ""
+    const val DEFAULT_EXP1 = ""
+    const val DEFAULT_EXP2 = ""
+    const val DEFAULT_AI_SUMMARY = ""
+    const val DEFAULT_CUSTOM_TAGS = ""
 
     val DEFAULT_SYSTEM_PROMPT = """
 你是一位顶尖的技术求职顾问与技术专家。

@@ -156,7 +156,7 @@ fun MainScreen() {
                     onClick = { selectedTab = 0 },
                     icon = {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_rocket),
+                            painter = painterResource(id = R.drawable.ic_dashboard),
                             contentDescription = "主控",
                             modifier = Modifier.size(22.dp)
                         )
@@ -416,7 +416,10 @@ fun TopHeroHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
                 // 好运猫头像容器 (方形圆角带轻微边框)
                 Box(
                     modifier = Modifier
@@ -436,15 +439,16 @@ fun TopHeroHeader(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(10.dp))
 
-                Column {
+                Column(modifier = Modifier.weight(1f, fill = false)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "AI 求职悬浮助手",
-                            fontSize = 15.5.sp,
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0F172A)
+                            color = Color(0xFF0F172A),
+                            maxLines = 1
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Surface(
@@ -467,7 +471,8 @@ fun TopHeroHeader(
                                     text = "Pro v2.4",
                                     fontSize = 9.5.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF047857)
+                                    color = Color(0xFF047857),
+                                    maxLines = 1
                                 )
                             }
                         }
@@ -475,36 +480,42 @@ fun TopHeroHeader(
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "在线待命中 · 实时匹配岗位需求与破冰话术",
-                        fontSize = 11.sp,
+                        fontSize = 10.5.sp,
                         color = Color(0xFF94A3B8),
-                        fontWeight = FontWeight.Normal
+                        fontWeight = FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }
             }
 
+            Spacer(modifier = Modifier.width(8.dp))
+
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // 状态指示 Pill
+                // 状态指示 Pill (强制单行不折行，杜绝竖向挤压)
                 Surface(
                     shape = RoundedCornerShape(20.dp),
                     color = if (floatingServiceRunning) Color(0xFFECFDF5) else Color(0xFFF1F5F9),
                     border = BorderStroke(1.dp, if (floatingServiceRunning) Color(0xFFD1FAE5) else Color(0xFFE2E8F0))
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.5.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(7.dp)
+                                .size(6.dp)
                                 .clip(CircleShape)
                                 .background(if (floatingServiceRunning) Color(0xFF10B981) else Color(0xFF94A3B8))
                         )
-                        Spacer(modifier = Modifier.width(5.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = if (floatingServiceRunning) "浮窗就绪中" else "服务待命中",
-                            fontSize = 11.sp,
+                            fontSize = 10.5.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (floatingServiceRunning) Color(0xFF047857) else Color(0xFF64748B)
+                            color = if (floatingServiceRunning) Color(0xFF047857) else Color(0xFF64748B),
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }
@@ -903,15 +914,15 @@ fun DashboardTab(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("今日识别", fontSize = 10.sp, color = Color(0xFF94A3B8))
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text("18 次", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                            Text("0 次", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                         }
 
                         Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color(0xFFE2E8F0)))
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("高回复率", fontSize = 10.sp, color = Color(0xFF94A3B8))
+                            Text("破冰就绪", fontSize = 10.sp, color = Color(0xFF94A3B8))
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text("83%", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
+                            Text("100%", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
                         }
 
                         Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color(0xFFE2E8F0)))
@@ -919,7 +930,7 @@ fun DashboardTab(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("平均响应", fontSize = 10.sp, color = Color(0xFF94A3B8))
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text("1.1s", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4F46E5))
+                            Text("0.6s", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4F46E5))
                         }
                     }
                 }
@@ -959,14 +970,14 @@ fun DashboardTab(
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
                                 Text(
-                                    text = "近期破冰：高级前端开发 · 匹配3大优势",
+                                    text = "待开启破冰 · 随时待命",
                                     fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF0F172A),
                                     maxLines = 1
                                 )
                                 Text(
-                                    text = "BOSS直聘 · 腾讯音乐 · HR 2分钟前已读",
+                                    text = "开启悬浮球后，在 BOSS 直聘等 App 点击猫咪即可生成",
                                     fontSize = 10.sp,
                                     color = Color(0xFF94A3B8),
                                     maxLines = 1
@@ -980,10 +991,10 @@ fun DashboardTab(
                             border = BorderStroke(1.dp, Color(0xFFE0E7FF))
                         ) {
                             Text(
-                                text = "已破冰",
+                                text = "待触发",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF4338CA),
+                                color = Color(0xFF64748B),
                                 modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                             )
                         }
@@ -1248,32 +1259,26 @@ fun ModelChipItem(
                     fontWeight = if (isActive) FontWeight.Bold else FontWeight.SemiBold,
                     color = if (isActive) Color(0xFF4338CA) else Color(0xFF334155)
                 )
-                if (isActive) {
+                if (extraTag != null) {
                     Surface(
-                        color = Color(0xFF4F46E5),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = "当前",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
-                        )
-                    }
-                } else if (extraTag != null) {
-                    Surface(
-                        color = Color(0xFFFEF3C7),
+                        color = if (isActive) Color(0xFFE0E7FF) else Color(0xFFFEF3C7),
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Text(
                             text = extraTag,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF92400E),
+                            color = if (isActive) Color(0xFF4338CA) else Color(0xFF92400E),
                             modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
                         )
                     }
+                } else if (isActive) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_check),
+                        contentDescription = null,
+                        tint = Color(0xFF4F46E5),
+                        modifier = Modifier.size(13.dp)
+                    )
                 }
             }
             Text(
@@ -1773,26 +1778,30 @@ fun ProfileTab(
                             .horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFEEF2FF),
-                            border = BorderStroke(1.dp, Color(0xFFE0E7FF))
-                        ) {
-                            Text("7年前端经验", fontSize = 11.sp, color = Color(0xFF4338CA), fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp))
-                        }
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFEFF6FF),
-                            border = BorderStroke(1.dp, Color(0xFFDBEAFE))
-                        ) {
-                            Text("全日制本科科班", fontSize = 11.sp, color = Color(0xFF1D4ED8), fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp))
-                        }
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFF0FDFA),
-                            border = BorderStroke(1.dp, Color(0xFFCCFBF1))
-                        ) {
-                            Text("带团队架构能力", fontSize = 11.sp, color = Color(0xFF0F766E), fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp))
+                        val isBound = resumeContent.isNotBlank() || uploadedFileName.isNotBlank()
+                        if (isBound) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFECFDF5),
+                                border = BorderStroke(1.dp, Color(0xFFD1FAE5))
+                            ) {
+                                Text("已关联个人档案", fontSize = 11.sp, color = Color(0xFF047857), fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp))
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFEEF2FF),
+                                border = BorderStroke(1.dp, Color(0xFFE0E7FF))
+                            ) {
+                                Text("已就绪AI动态匹配", fontSize = 11.sp, color = Color(0xFF4338CA), fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp))
+                            }
+                        } else {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFF8FAFC),
+                                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                            ) {
+                                Text("待上传简历解析职龄背景", fontSize = 11.sp, color = Color(0xFF94A3B8), fontWeight = FontWeight.Normal, modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp))
+                            }
                         }
                     }
                 }
@@ -1807,7 +1816,7 @@ fun ProfileTab(
                             modifier = Modifier.size(13.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("核心技术栈 (自动抓取)", fontSize = 11.sp, color = Color(0xFF94A3B8), fontWeight = FontWeight.Medium)
+                        Text("核心技术栈 / 个人优势标签", fontSize = 11.sp, color = Color(0xFF94A3B8), fontWeight = FontWeight.Medium)
                     }
 
                     Row(
@@ -1817,19 +1826,34 @@ fun ProfileTab(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        customTags.forEach { tag ->
+                        if (customTags.isEmpty()) {
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
                                 color = Color(0xFFF8FAFC),
                                 border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                             ) {
                                 Text(
-                                    text = tag,
+                                    text = "暂无标签（可点击右侧添加）",
                                     fontSize = 11.sp,
-                                    color = Color(0xFF334155),
-                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF94A3B8),
                                     modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp)
                                 )
+                            }
+                        } else {
+                            customTags.forEach { tag ->
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFFF8FAFC),
+                                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                                ) {
+                                    Text(
+                                        text = tag,
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF334155),
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp)
+                                    )
+                                }
                             }
                         }
 
@@ -1864,7 +1888,7 @@ fun ProfileTab(
 
         // 3. StructuredCandidateInfo (匹配核心依据结构化卡片库)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            // 依据库标题与重置按钮
+            // 依据库标题与清空按钮
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1889,15 +1913,17 @@ fun ProfileTab(
                     color = Color.White,
                     border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                     modifier = Modifier.clickable {
-                        targetRole = StorageManager.DEFAULT_TARGET_ROLE
-                        targetSalaryCity = StorageManager.DEFAULT_TARGET_SALARY_CITY
-                        exp1Content = StorageManager.DEFAULT_EXP1
-                        aiSummary = StorageManager.DEFAULT_AI_SUMMARY
-                        StorageManager.saveTargetRole(context, targetRole)
-                        StorageManager.saveTargetSalaryCity(context, targetSalaryCity)
-                        StorageManager.saveExp1(context, exp1Content)
-                        StorageManager.saveAiSummary(context, aiSummary)
-                        Toast.makeText(context, "已重置为系统预设匹配规则", Toast.LENGTH_SHORT).show()
+                        targetRole = ""
+                        targetSalaryCity = ""
+                        exp1Content = ""
+                        aiSummary = ""
+                        customTags = emptyList()
+                        StorageManager.saveTargetRole(context, "")
+                        StorageManager.saveTargetSalaryCity(context, "")
+                        StorageManager.saveExp1(context, "")
+                        StorageManager.saveAiSummary(context, "")
+                        StorageManager.saveCustomTags(context, emptyList())
+                        Toast.makeText(context, "已清空所有档案依据与标签", Toast.LENGTH_SHORT).show()
                     }
                 ) {
                     Row(
@@ -1905,13 +1931,13 @@ fun ProfileTab(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_sync),
+                            painter = painterResource(id = R.drawable.ic_delete),
                             contentDescription = null,
-                            tint = Color(0xFF64748B),
+                            tint = Color(0xFFDC2626),
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("恢复预设", fontSize = 11.sp, color = Color(0xFF475569), fontWeight = FontWeight.Medium)
+                        Text("清空档案", fontSize = 11.sp, color = Color(0xFFDC2626), fontWeight = FontWeight.Medium)
                     }
                 }
             }
@@ -2001,12 +2027,22 @@ fun ProfileTab(
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Color(0xFFF8FAFC))
                                     .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        draftRole = targetRole
+                                        draftSalaryCity = targetSalaryCity
+                                        isEditingIntention = true
+                                    }
                                     .padding(10.dp)
                             ) {
                                 Column {
                                     Text("求职意向", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text(targetRole, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                                    Text(
+                                        text = if (targetRole.isNotBlank()) targetRole else "待录入求职意向",
+                                        fontSize = 12.sp,
+                                        fontWeight = if (targetRole.isNotBlank()) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (targetRole.isNotBlank()) Color(0xFF0F172A) else Color(0xFF94A3B8)
+                                    )
                                 }
                             }
 
@@ -2016,12 +2052,22 @@ fun ProfileTab(
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Color(0xFFF8FAFC))
                                     .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        draftRole = targetRole
+                                        draftSalaryCity = targetSalaryCity
+                                        isEditingIntention = true
+                                    }
                                     .padding(10.dp)
                             ) {
                                 Column {
                                     Text("期望薪资 / 城市", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text(targetSalaryCity, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                                    Text(
+                                        text = if (targetSalaryCity.isNotBlank()) targetSalaryCity else "待录入薪资/城市",
+                                        fontSize = 12.sp,
+                                        fontWeight = if (targetSalaryCity.isNotBlank()) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (targetSalaryCity.isNotBlank()) Color(0xFF0F172A) else Color(0xFF94A3B8)
+                                    )
                                 }
                             }
                         }
@@ -2052,39 +2098,51 @@ fun ProfileTab(
                                         .background(Color(0xFF4F46E5))
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("英智创新（深圳）科技有限公司", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                                Text(
+                                    text = if (exp1Content.isNotBlank()) "主要工作与项目经历" else "核心工作经历（待完善）",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0F172A)
+                                )
                             }
-                            Text("前端负责人 · 2023.10 - 至今 (在职)", fontSize = 10.5.sp, color = Color(0xFF94A3B8), modifier = Modifier.padding(start = 12.dp, top = 2.dp))
+                            Text(
+                                text = if (exp1Content.isNotBlank()) "已同步大模型匹配底座" else "暂未录入经历，支持上方上传或右侧编辑",
+                                fontSize = 10.5.sp,
+                                color = Color(0xFF94A3B8),
+                                modifier = Modifier.padding(start = 12.dp, top = 2.dp)
+                            )
                         }
 
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = Color(0xFFECFDF5),
-                                border = BorderStroke(1.dp, Color(0xFFD1FAE5))
-                            ) {
-                                Text("最近一段", fontSize = 10.sp, color = Color(0xFF047857), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                            }
+                            if (exp1Content.isNotBlank()) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Color(0xFFECFDF5),
+                                    border = BorderStroke(1.dp, Color(0xFFD1FAE5))
+                                ) {
+                                    Text("已录入", fontSize = 10.sp, color = Color(0xFF047857), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                }
 
-                            // 复制经历按钮
-                            Box(
-                                modifier = Modifier
-                                    .size(26.dp)
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(Color(0xFFF8FAFC))
-                                    .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(6.dp))
-                                    .clickable {
-                                        clipboardManager.setText(AnnotatedString(exp1Content))
-                                        Toast.makeText(context, "已复制经历亮点到剪贴板", Toast.LENGTH_SHORT).show()
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_copy),
-                                    contentDescription = "复制",
-                                    tint = Color(0xFF64748B),
-                                    modifier = Modifier.size(13.dp)
-                                )
+                                // 复制经历按钮
+                                Box(
+                                    modifier = Modifier
+                                        .size(26.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(Color(0xFFF8FAFC))
+                                        .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(6.dp))
+                                        .clickable {
+                                            clipboardManager.setText(AnnotatedString(exp1Content))
+                                            Toast.makeText(context, "已复制经历亮点到剪贴板", Toast.LENGTH_SHORT).show()
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_copy),
+                                        contentDescription = "复制",
+                                        tint = Color(0xFF64748B),
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                }
                             }
 
                             Text(
@@ -2104,6 +2162,7 @@ fun ProfileTab(
                         OutlinedTextField(
                             value = draftExp1,
                             onValueChange = { draftExp1 = it },
+                            placeholder = { Text("在此输入您的核心技术项目、架构产出与量化指标...", fontSize = 11.5.sp, color = Color(0xFF94A3B8)) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 90.dp, max = 180.dp),
@@ -2135,9 +2194,9 @@ fun ProfileTab(
                                 .padding(10.dp)
                         ) {
                             Text(
-                                text = exp1Content,
+                                text = if (exp1Content.isNotBlank()) exp1Content else "暂无工作经历记录。请在上方上传简历文件自动解析，或点击右上角【编辑】手动添加您的过往主导项目与技术亮点。",
                                 fontSize = 11.5.sp,
-                                color = Color(0xFF475569),
+                                color = if (exp1Content.isNotBlank()) Color(0xFF475569) else Color(0xFF94A3B8),
                                 lineHeight = 17.sp
                             )
                         }
@@ -2145,46 +2204,7 @@ fun ProfileTab(
                 }
             }
 
-            // 卡片 3: 过往工作经历
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFCBD5E1))
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("深圳市深讯数据科技股份有限公司", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
-                    }
-                    Text("高级前端工程师 · 2020.02 - 2023.09", fontSize = 10.5.sp, color = Color(0xFF94A3B8), modifier = Modifier.padding(start = 12.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFF8FAFC))
-                            .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(12.dp))
-                            .padding(10.dp)
-                    ) {
-                        Text(
-                            text = StorageManager.DEFAULT_EXP2,
-                            fontSize = 11.5.sp,
-                            color = Color(0xFF475569),
-                            lineHeight = 17.sp
-                        )
-                    }
-                }
-            }
-
-            // 卡片 4: AI 精炼优势（即用打招呼语料）
+            // 卡片 3: AI 精炼优势（即用打招呼语料）
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFEEF2FF).copy(alpha = 0.5f)),
@@ -2225,6 +2245,7 @@ fun ProfileTab(
                         OutlinedTextField(
                             value = draftSummary,
                             onValueChange = { draftSummary = it },
+                            placeholder = { Text("在此直接编辑您的特色开场白语料...", fontSize = 11.5.sp, color = Color(0xFF94A3B8)) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 90.dp, max = 180.dp),
@@ -2256,8 +2277,15 @@ fun ProfileTab(
                                 .padding(10.dp)
                         ) {
                             Text(
-                                text = aiSummary,
+                                text = if (aiSummary.isNotBlank()) aiSummary else "暂无精炼语料。录入简历后由大模型提炼，或点击右上角【快捷调整】直接输入您专属的高响应率破冰开场白。",
                                 fontSize = 11.5.sp,
+                                color = if (aiSummary.isNotBlank()) Color(0xFF334155) else Color(0xFF94A3B8),
+                                lineHeight = 17.sp
+                            )
+                        }
+                    }
+                }
+            }
                                 color = Color(0xFF334155),
                                 lineHeight = 17.sp
                             )
