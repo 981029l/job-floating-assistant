@@ -11,11 +11,24 @@ object StorageManager {
     private const val KEY_RESUME = "resume_content"
     private const val KEY_PROMPT = "custom_prompt"
     private const val KEY_BUBBLE_SIZE = "bubble_size_dp"
+    private const val KEY_TARGET_ROLE = "target_role"
+    private const val KEY_TARGET_SALARY_CITY = "target_salary_city"
+    private const val KEY_EXP1 = "experience_1"
+    private const val KEY_EXP2 = "experience_2"
+    private const val KEY_AI_SUMMARY = "ai_summary"
+    private const val KEY_CUSTOM_TAGS = "custom_tech_tags"
 
     const val DEFAULT_BASE_URL = "https://api.deepseek.com/v1"
     const val DEFAULT_MODEL = "deepseek-flash"
     const val DEFAULT_RESUME = ""
     const val DEFAULT_BUBBLE_SIZE = 56
+
+    const val DEFAULT_TARGET_ROLE = "前端开发工程师"
+    const val DEFAULT_TARGET_SALARY_CITY = "15-20K · 深圳"
+    const val DEFAULT_EXP1 = "• 负责企业级 AI 对话工作台从 0 到 1 架构构建，攻克 SSE 流式数据长连接中断补偿与高频 Markdown 渲染卡顿 痛点。\n• 主导微前端改造与 Vite 打包加速方案，使得构建效率提升约 45%。"
+    const val DEFAULT_EXP2 = "• 核心业务「爱球直播平台」多端同构重构，基于 Canvas 实现高拟真百万级弹幕互动引擎与低延迟播放流渲染控制。"
+    const val DEFAULT_AI_SUMMARY = "“您好！7年前端全栈工程实践经验，精通 Vue3、TypeScript 与复杂前端性能工程。近期主导高频大模型 SSE 及音视频 Canvas 渲染业务，具有成熟高并发落地经验，与贵司该岗位要求高度匹配，期盼进一步交流！”"
+    const val DEFAULT_CUSTOM_TAGS = "Vue3 + TS,大模型 SSE 流式,直播 Canvas 渲染,React 18 全家桶,Vite 性能极致调优"
 
     val DEFAULT_SYSTEM_PROMPT = """
 你是一位顶尖的技术求职顾问与技术专家。
@@ -86,5 +99,46 @@ object StorageManager {
 
     fun getBubbleSize(context: Context): Int {
         return getPrefs(context).getInt(KEY_BUBBLE_SIZE, DEFAULT_BUBBLE_SIZE)
+    }
+
+    fun saveTargetRole(context: Context, role: String) {
+        getPrefs(context).edit().putString(KEY_TARGET_ROLE, role).apply()
+    }
+
+    fun getTargetRole(context: Context): String {
+        return getPrefs(context).getString(KEY_TARGET_ROLE, DEFAULT_TARGET_ROLE) ?: DEFAULT_TARGET_ROLE
+    }
+
+    fun saveTargetSalaryCity(context: Context, salaryCity: String) {
+        getPrefs(context).edit().putString(KEY_TARGET_SALARY_CITY, salaryCity).apply()
+    }
+
+    fun getTargetSalaryCity(context: Context): String {
+        return getPrefs(context).getString(KEY_TARGET_SALARY_CITY, DEFAULT_TARGET_SALARY_CITY) ?: DEFAULT_TARGET_SALARY_CITY
+    }
+
+    fun saveExp1(context: Context, exp: String) {
+        getPrefs(context).edit().putString(KEY_EXP1, exp).apply()
+    }
+
+    fun getExp1(context: Context): String {
+        return getPrefs(context).getString(KEY_EXP1, DEFAULT_EXP1) ?: DEFAULT_EXP1
+    }
+
+    fun saveAiSummary(context: Context, summary: String) {
+        getPrefs(context).edit().putString(KEY_AI_SUMMARY, summary).apply()
+    }
+
+    fun getAiSummary(context: Context): String {
+        return getPrefs(context).getString(KEY_AI_SUMMARY, DEFAULT_AI_SUMMARY) ?: DEFAULT_AI_SUMMARY
+    }
+
+    fun saveCustomTags(context: Context, tags: List<String>) {
+        getPrefs(context).edit().putString(KEY_CUSTOM_TAGS, tags.joinToString(",")).apply()
+    }
+
+    fun getCustomTags(context: Context): List<String> {
+        val s = getPrefs(context).getString(KEY_CUSTOM_TAGS, DEFAULT_CUSTOM_TAGS) ?: DEFAULT_CUSTOM_TAGS
+        return s.split(",").map { it.trim() }.filter { it.isNotEmpty() }
     }
 }

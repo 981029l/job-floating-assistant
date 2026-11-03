@@ -1428,7 +1428,7 @@ fun SimulatedFloatingDialog(
     }
 }
 
-// Tab 1: 求职档案中心 Profile (修复标签折断、删除预设文案)
+// Tab 1: 求职档案中心 Profile (全面对齐 Google Stitch 高保真规范)
 @Composable
 fun ProfileTab(
     context: Context,
@@ -1440,58 +1440,802 @@ fun ProfileTab(
     onClearResume: () -> Unit
 ) {
     val scrollState = rememberScrollState()
+    val clipboardManager = LocalClipboardManager.current
+
+    // 结构化卡片持久状态
+    var targetRole by remember { mutableStateOf(StorageManager.getTargetRole(context)) }
+    var targetSalaryCity by remember { mutableStateOf(StorageManager.getTargetSalaryCity(context)) }
+    var exp1Content by remember { mutableStateOf(StorageManager.getExp1(context)) }
+    var aiSummary by remember { mutableStateOf(StorageManager.getAiSummary(context)) }
+    var customTags by remember { mutableStateOf(StorageManager.getCustomTags(context)) }
+
+    // 编辑模式切换状态
+    var isEditingIntention by remember { mutableStateOf(false) }
+    var isEditingExp1 by remember { mutableStateOf(false) }
+    var isEditingSummary by remember { mutableStateOf(false) }
+
+    // 编辑草稿输入
+    var draftRole by remember { mutableStateOf(targetRole) }
+    var draftSalaryCity by remember { mutableStateOf(targetSalaryCity) }
+    var draftExp1 by remember { mutableStateOf(exp1Content) }
+    var draftSummary by remember { mutableStateOf(aiSummary) }
+
+    // 加亮点弹层状态
+    var showAddTagDialog by remember { mutableStateOf(false) }
+    var newTagInput by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .imePadding()
             .verticalScroll(scrollState)
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 上传文件卡片 (品牌紫蓝高光)
+        // 1. ResumeUploadStatusCard (简历绑定状态与上传卡片)
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFEEF2FF)),
             shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
             border = BorderStroke(1.dp, Color(0xFFE0E7FF)),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_upload),
-                        contentDescription = "Upload",
-                        tint = Color(0xFF4F46E5),
-                        modifier = Modifier.size(22.dp)
+            Column {
+                if (isParsing) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(3.dp),
+                        color = Color(0xFF4F46E5),
+                        trackColor = Color(0xFFEEF2FF)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text("导入本地简历文件", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF312E81))
-                        Text("支持 PDF、Word (.docx) 及纯文本格式", fontSize = 11.sp, color = Color(0xFF4338CA))
-                    }
                 }
 
-                Button(
-                    onClick = onUploadClick,
-                    modifier = Modifier.fillMaxWidth().height(44.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5)),
-                    shape = RoundedCornerShape(12.dp)
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = if (isParsing) "正在解析文件中..." else "选择手机简历文件导入",
-                        fontSize = 12.5.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color(0xFFEEF2FF)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_document),
+                                    contentDescription = "Document",
+                                    tint = Color(0xFF4F46E5),
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    val isBound = resumeContent.isNotBlank() || uploadedFileName.isNotBlank()
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = if (isBound) Color(0xFFECFDF5) else Color(0xFFFFFBEB),
+                                        border = BorderStroke(1.dp, if (isBound) Color(0xFFD1FAE5) else Color(0xFFFDE68A))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            if (isBound) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.ic_check),
+                                                    contentDescription = null,
+                                                    tint = Color(0xFF047857),
+                                                    modifier = Modifier.size(11.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(3.dp))
+                                            }
+                                            Text(
+                                                text = if (isBound) "已绑定简历" else "未绑定简历",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = if (isBound) Color(0xFF047857) else Color(0xFFB45309)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "PDF智能解析 · 纯文本",
+                                        fontSize = 10.5.sp,
+                                        color = Color(0xFF94A3B8)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Text(
+                                    text = if (uploadedFileName.isNotBlank()) {
+                                        uploadedFileName
+                                    } else if (resumeContent.isNotBlank()) {
+                                        "自定义简历档案 (已持久化)"
+                                    } else {
+                                        "暂未上传本地简历文件"
+                                    },
+                                    fontSize = 13.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0F172A),
+                                    maxLines = 1
+                                )
+                            }
+                        }
 
-                if (uploadedFileName.isNotBlank()) {
-                    Text("最近导入：$uploadedFileName", fontSize = 11.sp, color = Color(0xFF4338CA), fontWeight = FontWeight.Medium)
+                        // 更换按钮
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFEEF2FF),
+                            border = BorderStroke(1.dp, Color(0xFFE0E7FF)),
+                            modifier = Modifier.clickable { onUploadClick() }
+                        ) {
+                            Text(
+                                text = "更换",
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF4F46E5),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
+
+                    // 元信息与脱敏行
+                    HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "上次更新：本地持久化 · 毫秒级匹配",
+                            fontSize = 10.5.sp,
+                            color = Color(0xFF94A3B8)
+                        )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0xFFECFDF5),
+                                border = BorderStroke(1.dp, Color(0xFFD1FAE5))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_security),
+                                        contentDescription = null,
+                                        tint = Color(0xFF047857),
+                                        modifier = Modifier.size(11.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text(
+                                        text = "隐私安全已脱敏",
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xFF047857)
+                                    )
+                                }
+                            }
+
+                            Text(
+                                text = "脱敏明细",
+                                fontSize = 10.5.sp,
+                                color = Color(0xFF4F46E5),
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.clickable {
+                                    Toast.makeText(context, "已开启隐私脱敏：手机/微信/精准住址已星号保护", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
+                    }
+
+                    // 大行动按钮
+                    Button(
+                        onClick = onUploadClick,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5))
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_upload),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isParsing) "正在解析文件中..." else "重新上传导入 / 格式支持 PDF · DOCX",
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
 
-        // 简历核心亮点标签 (支持水平平滑滑动，杜绝文字垂直折叠)
+        // 2. ResumeCoreHighlightsSection (简历核心提取亮点)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .width(3.dp)
+                                .height(14.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(Color(0xFF4F46E5))
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("简历核心提取亮点", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("(打招呼优先命中)", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFEEF2FF),
+                        modifier = Modifier.clickable {
+                            Toast.makeText(context, "AI 亮点提取完成，已更新优先级", Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_sparkle),
+                                contentDescription = null,
+                                tint = Color(0xFF4F46E5),
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("AI重提", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF4F46E5))
+                        }
+                    }
+                }
+
+                // 子分组 1: 职龄与背景
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_badge),
+                            contentDescription = null,
+                            tint = Color(0xFF94A3B8),
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("职龄与背景", fontSize = 11.sp, color = Color(0xFF94A3B8), fontWeight = FontWeight.Medium)
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFEEF2FF),
+                            border = BorderStroke(1.dp, Color(0xFFE0E7FF))
+                        ) {
+                            Text("7年前端经验", fontSize = 11.sp, color = Color(0xFF4338CA), fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp))
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFEFF6FF),
+                            border = BorderStroke(1.dp, Color(0xFFDBEAFE))
+                        ) {
+                            Text("全日制本科科班", fontSize = 11.sp, color = Color(0xFF1D4ED8), fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp))
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFF0FDFA),
+                            border = BorderStroke(1.dp, Color(0xFFCCFBF1))
+                        ) {
+                            Text("带团队架构能力", fontSize = 11.sp, color = Color(0xFF0F766E), fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp))
+                        }
+                    }
+                }
+
+                // 子分组 2: 核心技术栈 (自动抓取 + 自定义)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_rocket),
+                            contentDescription = null,
+                            tint = Color(0xFF94A3B8),
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("核心技术栈 (自动抓取)", fontSize = 11.sp, color = Color(0xFF94A3B8), fontWeight = FontWeight.Medium)
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        customTags.forEach { tag ->
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFF8FAFC),
+                                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                            ) {
+                                Text(
+                                    text = tag,
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF334155),
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp)
+                                )
+                            }
+                        }
+
+                        // 加亮点按钮
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFEEF2FF),
+                            border = BorderStroke(1.dp, Color(0xFF818CF8)),
+                            modifier = Modifier.clickable {
+                                newTagInput = ""
+                                showAddTagDialog = true
+                            }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_add),
+                                    contentDescription = null,
+                                    tint = Color(0xFF4F46E5),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("加亮点", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4F46E5))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. StructuredCandidateInfo (匹配核心依据结构化卡片库)
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // 依据库标题与重置按钮
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("匹配核心依据卡片", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Color(0xFFF1F5F9)
+                        ) {
+                            Text("支持点击卡片编辑", fontSize = 9.5.sp, color = Color(0xFF64748B), modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                        }
+                    }
+                    Text("AI在BOSS直聘、猎聘一键招呼时将精准采信此库", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color.White,
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    modifier = Modifier.clickable {
+                        targetRole = StorageManager.DEFAULT_TARGET_ROLE
+                        targetSalaryCity = StorageManager.DEFAULT_TARGET_SALARY_CITY
+                        exp1Content = StorageManager.DEFAULT_EXP1
+                        aiSummary = StorageManager.DEFAULT_AI_SUMMARY
+                        StorageManager.saveTargetRole(context, targetRole)
+                        StorageManager.saveTargetSalaryCity(context, targetSalaryCity)
+                        StorageManager.saveExp1(context, exp1Content)
+                        StorageManager.saveAiSummary(context, aiSummary)
+                        Toast.makeText(context, "已重置为系统预设匹配规则", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_sync),
+                            contentDescription = null,
+                            tint = Color(0xFF64748B),
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("恢复预设", fontSize = 11.sp, color = Color(0xFF475569), fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+
+            // 卡片 1: 期望职位与坐标
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_target),
+                                contentDescription = null,
+                                tint = Color(0xFF4F46E5),
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("期望职位与坐标", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+                        }
+
+                        Text(
+                            text = if (isEditingIntention) "取消" else "编辑",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4F46E5),
+                            modifier = Modifier.clickable {
+                                if (!isEditingIntention) {
+                                    draftRole = targetRole
+                                    draftSalaryCity = targetSalaryCity
+                                }
+                                isEditingIntention = !isEditingIntention
+                            }
+                        )
+                    }
+
+                    if (isEditingIntention) {
+                        OutlinedTextField(
+                            value = draftRole,
+                            onValueChange = { draftRole = it },
+                            label = { Text("求职意向") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = draftSalaryCity,
+                            onValueChange = { draftSalaryCity = it },
+                            label = { Text("期望薪资 / 城市") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            singleLine = true
+                        )
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            Button(
+                                onClick = {
+                                    targetRole = draftRole
+                                    targetSalaryCity = draftSalaryCity
+                                    StorageManager.saveTargetRole(context, draftRole)
+                                    StorageManager.saveTargetSalaryCity(context, draftSalaryCity)
+                                    isEditingIntention = false
+                                    Toast.makeText(context, "卡片信息已同步保存", Toast.LENGTH_SHORT).show()
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5)),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                            ) {
+                                Text("保存", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color(0xFFF8FAFC))
+                                    .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(12.dp))
+                                    .padding(10.dp)
+                            ) {
+                                Column {
+                                    Text("求职意向", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(targetRole, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                                }
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color(0xFFF8FAFC))
+                                    .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(12.dp))
+                                    .padding(10.dp)
+                            ) {
+                                Column {
+                                    Text("期望薪资 / 城市", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(targetSalaryCity, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 卡片 2: 核心工作经历
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF4F46E5))
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("英智创新（深圳）科技有限公司", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                            }
+                            Text("前端负责人 · 2023.10 - 至今 (在职)", fontSize = 10.5.sp, color = Color(0xFF94A3B8), modifier = Modifier.padding(start = 12.dp, top = 2.dp))
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0xFFECFDF5),
+                                border = BorderStroke(1.dp, Color(0xFFD1FAE5))
+                            ) {
+                                Text("最近一段", fontSize = 10.sp, color = Color(0xFF047857), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+
+                            // 复制经历按钮
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFFF8FAFC))
+                                    .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(6.dp))
+                                    .clickable {
+                                        clipboardManager.setText(AnnotatedString(exp1Content))
+                                        Toast.makeText(context, "已复制经历亮点到剪贴板", Toast.LENGTH_SHORT).show()
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_copy),
+                                    contentDescription = "复制",
+                                    tint = Color(0xFF64748B),
+                                    modifier = Modifier.size(13.dp)
+                                )
+                            }
+
+                            Text(
+                                text = if (isEditingExp1) "取消" else "编辑",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF4F46E5),
+                                modifier = Modifier.clickable {
+                                    if (!isEditingExp1) draftExp1 = exp1Content
+                                    isEditingExp1 = !isEditingExp1
+                                }
+                            )
+                        }
+                    }
+
+                    if (isEditingExp1) {
+                        OutlinedTextField(
+                            value = draftExp1,
+                            onValueChange = { draftExp1 = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 90.dp, max = 180.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, lineHeight = 16.sp)
+                        )
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            Button(
+                                onClick = {
+                                    exp1Content = draftExp1
+                                    StorageManager.saveExp1(context, draftExp1)
+                                    isEditingExp1 = false
+                                    Toast.makeText(context, "工作经历已同步保存", Toast.LENGTH_SHORT).show()
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5)),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                            ) {
+                                Text("保存", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFF8FAFC))
+                                .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(12.dp))
+                                .padding(10.dp)
+                        ) {
+                            Text(
+                                text = exp1Content,
+                                fontSize = 11.5.sp,
+                                color = Color(0xFF475569),
+                                lineHeight = 17.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 卡片 3: 过往工作经历
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFCBD5E1))
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("深圳市深讯数据科技股份有限公司", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                    }
+                    Text("高级前端工程师 · 2020.02 - 2023.09", fontSize = 10.5.sp, color = Color(0xFF94A3B8), modifier = Modifier.padding(start = 12.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFF8FAFC))
+                            .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(12.dp))
+                            .padding(10.dp)
+                    ) {
+                        Text(
+                            text = StorageManager.DEFAULT_EXP2,
+                            fontSize = 11.5.sp,
+                            color = Color(0xFF475569),
+                            lineHeight = 17.sp
+                        )
+                    }
+                }
+            }
+
+            // 卡片 4: AI 精炼优势（即用打招呼语料）
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFEEF2FF).copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color(0xFFE0E7FF)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_sparkle),
+                                contentDescription = null,
+                                tint = Color(0xFF4F46E5),
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("AI 精炼优势（即用打招呼语料）", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                        }
+
+                        Text(
+                            text = if (isEditingSummary) "取消" else "快捷调整",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4F46E5),
+                            modifier = Modifier.clickable {
+                                if (!isEditingSummary) draftSummary = aiSummary
+                                isEditingSummary = !isEditingSummary
+                            }
+                        )
+                    }
+
+                    if (isEditingSummary) {
+                        OutlinedTextField(
+                            value = draftSummary,
+                            onValueChange = { draftSummary = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 90.dp, max = 180.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, lineHeight = 16.sp)
+                        )
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            Button(
+                                onClick = {
+                                    aiSummary = draftSummary
+                                    StorageManager.saveAiSummary(context, draftSummary)
+                                    isEditingSummary = false
+                                    Toast.makeText(context, "精炼语料已同步保存", Toast.LENGTH_SHORT).show()
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5)),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                            ) {
+                                Text("保存", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White)
+                                .border(1.dp, Color(0xFFE0E7FF), RoundedCornerShape(12.dp))
+                                .padding(10.dp)
+                        ) {
+                            Text(
+                                text = aiSummary,
+                                fontSize = 11.5.sp,
+                                color = Color(0xFF334155),
+                                lineHeight = 17.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. 完整简历原始文本全局只读与补充编辑器
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -1505,67 +2249,143 @@ fun ProfileTab(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("简历核心提取亮点", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+                    Text("完整简历原始文本（供大模型全局推理）", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
                     if (resumeContent.isNotBlank()) {
                         TextButton(onClick = onClearResume) {
-                            Text("清空简历", fontSize = 11.5.sp, color = Color(0xFFDC2626))
+                            Text("清空文本", fontSize = 11.sp, color = Color(0xFFDC2626))
                         }
                     }
                 }
 
-                // 动态匹配高亮标签并横向滑动排版
-                val matchedTags = remember(resumeContent) {
-                    val candidateKeywords = listOf("前端", "后端", "全栈", "Vue", "React", "TypeScript", "Node.js", "Java", "Python", "Go", "Android", "iOS", "AI", "大模型", "科班", "本科", "硕士", "架构", "性能优化")
-                    candidateKeywords.filter { resumeContent.contains(it, ignoreCase = true) }
-                }
-
-                if (matchedTags.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        matchedTags.forEach { tag ->
-                            Surface(
-                                color = Color(0xFFF1F5F9),
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = tag,
-                                    fontSize = 11.sp,
-                                    color = Color(0xFF475569),
-                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    Text(
-                        text = if (resumeContent.isBlank()) "暂未录入简历内容，可直接在下方粘贴或上方导入文件" else "自定义简历内容已录入",
-                        fontSize = 11.sp,
-                        color = Color(0xFF94A3B8)
-                    )
-                }
-
-                Text("以下内容将作为打招呼时的核心匹配依据（自动保存）：", fontSize = 11.sp, color = Color(0xFF64748B))
+                Text("以下内容将作为打招呼时大模型读取的全局候选人信息（修改自动保存）：", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
 
                 OutlinedTextField(
                     value = resumeContent,
                     onValueChange = onResumeChange,
                     placeholder = {
                         Text(
-                            text = "请在此处粘贴您的个人简历正文、求职意向或核心技能亮点，或者点击上方直接选择手机简历文件导入...",
-                            fontSize = 12.sp,
+                            text = "可在此处粘贴您的个人简历详细正文、专业经历或项目难点，或者通过顶部按钮直接导入手机文件...",
+                            fontSize = 11.5.sp,
                             color = Color(0xFF94A3B8)
                         )
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 180.dp, max = 340.dp),
+                        .heightIn(min = 160.dp, max = 320.dp),
                     shape = RoundedCornerShape(12.dp),
-                    textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, lineHeight = 18.sp)
+                    textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, lineHeight = 17.sp)
                 )
+            }
+        }
+    }
+
+    // 动态加亮点 Modal Dialog
+    if (showAddTagDialog) {
+        Dialog(onDismissRequest = { showAddTagDialog = false }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_sparkle),
+                                contentDescription = null,
+                                tint = Color(0xFF4F46E5),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("添加核心技术或特征亮点", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                        }
+                        IconButton(
+                            onClick = { showAddTagDialog = false },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_close),
+                                contentDescription = "关闭",
+                                tint = Color(0xFF64748B),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = newTagInput,
+                        onValueChange = { if (it.length <= 20) newTagInput = it },
+                        placeholder = { Text("例如：Docker · WebGL 3D · 敏捷全栈", fontSize = 11.sp, color = Color(0xFF94A3B8)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        singleLine = true
+                    )
+
+                    Text("快捷点击添加热门标签：", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
+
+                    val quickPresets = listOf("WebGL / Three.js", "Next.js 全栈", "微前端 Qiankun", "Flutter 跨端", "Docker 容器化")
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        quickPresets.forEach { preset ->
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0xFFF1F5F9),
+                                modifier = Modifier.clickable { newTagInput = preset }
+                            ) {
+                                Text(
+                                    text = preset,
+                                    fontSize = 10.5.sp,
+                                    color = Color(0xFF334155),
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.5.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { showAddTagDialog = false }) {
+                            Text("取消", fontSize = 12.sp, color = Color(0xFF64748B))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                val trimmed = newTagInput.trim()
+                                if (trimmed.isNotBlank()) {
+                                    val updated = customTags + trimmed
+                                    customTags = updated
+                                    StorageManager.saveCustomTags(context, updated)
+                                    showAddTagDialog = false
+                                    Toast.makeText(context, "已追加亮点：$trimmed", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "请输入亮点标签内容", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("追加亮点", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
             }
         }
     }

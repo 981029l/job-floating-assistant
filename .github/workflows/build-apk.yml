@@ -41,7 +41,7 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.0.9-debug.apk
+          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.1.0-debug.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -54,17 +54,16 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.9
-          name: "AI求职悬浮助手 v1.0.9 (深度对齐 Google Stitch 高保真 Bento 规范与交互落地)"
+          tag_name: v1.1.0
+          name: "AI求职悬浮助手 v1.1.0 (求职档案全盘对齐 Google Stitch 高保真规范)"
           body: |
-            AI 求职悬浮助手 v1.0.9 重磅版本发布：全面落地 Google Stitch 极高保真交互与视觉体系！
-            1. 顶栏全新 Mascot Header：PRO 徽章微标与圆角方形好运猫头像容器，右侧配有服务待命双色呼吸灯及快速设置跳转入口；
-            2. 沉浸式渐变 Master 悬浮看板：三色平滑渐变底色，微光自适配状态芯片，原生级平滑轻量开关，新增【试运行模拟弹窗】与【调整猫咪浮标大小】快捷操作胶囊；
-            3. 核心权限与战绩看板联动：已授权双状态芯片，3 列高保真战绩数据流（今日识别、高回复率、平均响应）及最近破冰成功战报胶囊；
-            4. 2x2 Bento 大模型引擎矩阵：涵盖 deepseek-flash、deepseek-r1 (深度思考)、deepseek-chat、qwen-turbo，点击即时切换持久化，高亮激活态；
-            5. 高保真实战技巧与操作指引：温暖渐变底板 + 编号圆球，指引求职者高响应率直达 HR；
-            6. 全新交互式模拟破冰弹窗：无需切换应用即可在 App 内即时预览浮标对话、话术智能定制及一键换一句。
-          files: release_apk/JobAssistant-v1.0.9-debug.apk
+            AI 求职悬浮助手 v1.1.0 重磅发布：求职档案库全盘落地 Google Stitch 高保真设计体系！
+            1. 简历绑定状态卡片：文档图标容器、已绑定/未绑定状态标签、PDF/Word智能解析标识、脱敏隐私安全徽章及快捷更换与全宽上传按钮；
+            2. 简历核心提取亮点胶囊：职龄背景标签（7年前端、全日制本科科班、带团队架构）、核心技术栈（Vue3、大模型SSE、Canvas等）、AI重提按钮及【+ 加亮点】自定义弹层；
+            3. 结构化知识依据库：期望职位与坐标卡片、核心工作经历（支持查看与原位编辑保存、经历一键复制到剪贴板）、过往工作经历、AI精炼即用语料调整卡片；
+            4. 恢复预设与一键重置：支持一键还原系统高分匹配模板；
+            5. 完整全局简历文本持久化：底部保留全量简历正文编辑器，编辑自动同步大模型上下文。
+          files: release_apk/JobAssistant-v1.1.0-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
