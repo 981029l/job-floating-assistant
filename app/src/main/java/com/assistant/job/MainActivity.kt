@@ -1,5 +1,7 @@
 package com.assistant.job
 
+import java.io.File
+
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -103,6 +105,42 @@ fun MainScreen() {
     var isFetchingModels by remember { mutableStateOf(false) }
     var fetchedModels by remember { mutableStateOf<List<String>>(emptyList()) }
 
+    // 自动更新状态管理
+    var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var isDownloadingUpdate by remember { mutableStateOf(false) }
+    var downloadProgress by remember { mutableIntStateOf(0) }
+    var downloadError by remember { mutableStateOf<String?>(null) }
+    var downloadedApkFile by remember { mutableStateOf<File?>(null) }
+
+    val performUpdateCheck: (Boolean) -> Unit = { isManual ->
+        if (!isCheckingUpdate) {
+            isCheckingUpdate = true
+            if (isManual) {
+                Toast.makeText(context, "正在查询云端最新版本...", Toast.LENGTH_SHORT).show()
+            }
+            scope.launch {
+                val res = UpdateManager.checkForUpdate(context)
+                isCheckingUpdate = false
+                res.onSuccess { info ->
+                    if (info.hasUpdate) {
+                        updateInfo = info
+                        downloadedApkFile = null
+                        downloadError = null
+                        showUpdateDialog = true
+                    } else if (isManual) {
+                        Toast.makeText(context, "当前已是最新版本 (v${info.currentVersion})", Toast.LENGTH_SHORT).show()
+                    }
+                }.onFailure { err ->
+                    if (isManual) {
+                        Toast.makeText(context, "检测更新失败: ${err.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
     var isParsingResume by remember { mutableStateOf(false) }
     var uploadedFileName by remember { mutableStateOf("") }
 
@@ -164,6 +202,7 @@ fun MainScreen() {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+        performUpdateCheck(false)
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -382,7 +421,9 @@ fun MainScreen() {
                                     Toast.makeText(context, "获取失败: ${err.message}", Toast.LENGTH_LONG).show()
                                 }
                             }
-                        }
+                        },
+                        isCheckingUpdate = isCheckingUpdate,
+                        onCheckUpdateClick = { performUpdateCheck(true) }
                     )
                 }
             }
@@ -438,6 +479,38 @@ fun MainScreen() {
             },
             confirmButton = {
                 TextButton(onClick = { showModelDialog = false }) { Text("取消") }
+            }
+        )
+    }
+
+    if (showUpdateDialog && updateInfo != null) {
+        UpdateDialog(
+            updateInfo = updateInfo!!,
+            isDownloading = isDownloadingUpdate,
+            downloadProgress = downloadProgress,
+            downloadError = downloadError,
+            downloadedFile = downloadedApkFile,
+            onDismiss = { showUpdateDialog = false },
+            onStartDownload = {
+                isDownloadingUpdate = true
+                downloadProgress = 0
+                downloadError = null
+                scope.launch {
+                    val res = UpdateManager.downloadApk(context, updateInfo!!.downloadUrl) { p ->
+                        downloadProgress = p
+                    }
+                    isDownloadingUpdate = false
+                    res.onSuccess { file ->
+                        downloadedApkFile = file
+                        Toast.makeText(context, "新版本安装包下载完成，正在拉起系统安装...", Toast.LENGTH_SHORT).show()
+                        UpdateManager.installApk(context, file)
+                    }.onFailure { err ->
+                        downloadError = err.message ?: "下载失败，请重试"
+                    }
+                }
+            },
+            onInstall = { file ->
+                UpdateManager.installApk(context, file)
             }
         )
     }
@@ -2400,7 +2473,9 @@ fun SettingsTab(
     onBaseUrlChange: (String) -> Unit,
     onModelNameChange: (String) -> Unit,
     onPromptChange: (String) -> Unit,
-    onFetchModelsClick: () -> Unit
+    onFetchModelsClick: () -> Unit,
+    isCheckingUpdate: Boolean,
+    onCheckUpdateClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     val clipboardManager = LocalClipboardManager.current
@@ -2873,6 +2948,86 @@ fun SettingsTab(
                 Text("模拟在线破冰", fontSize = 12.sp, fontWeight = FontWeight.Medium)
             }
         }
+
+        // 4. 版本与在线更新卡片
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "软件版本与在线更新",
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E293B)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "已启用持久签名认证，支持应用内一键覆盖升级",
+                            fontSize = 11.sp,
+                            color = Color(0xFF64748B)
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFECFDF5)
+                    ) {
+                        Text(
+                            text = "官方正式版",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF059669),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "当前安装版本：v1.2.7",
+                        fontSize = 12.sp,
+                        color = Color(0xFF334155),
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Button(
+                        onClick = onCheckUpdateClick,
+                        enabled = !isCheckingUpdate,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5)),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        if (isCheckingUpdate) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(12.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("正在检查...", fontSize = 11.5.sp)
+                        } else {
+                            Text("检查最新版本", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // 模型选择对话框
@@ -3104,5 +3259,192 @@ private fun requestAccessibilityPermission(context: Context) {
         context.startActivity(intent)
     } catch (e: Exception) {
         Toast.makeText(context, "无法直接打开设置，请在系统设置中找到'无障碍'", Toast.LENGTH_LONG).show()
+    }
+}
+
+
+@Composable
+fun UpdateDialog(
+    updateInfo: UpdateInfo,
+    isDownloading: Boolean,
+    downloadProgress: Int,
+    downloadError: String?,
+    downloadedFile: File?,
+    onDismiss: () -> Unit,
+    onStartDownload: () -> Unit,
+    onInstall: (File) -> Unit
+) {
+    Dialog(onDismissRequest = { if (!isDownloading) onDismiss() }) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // 顶栏：新版本徽章与标题
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "发现新版本",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E293B)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "当前: v${updateInfo.currentVersion} -> 最新: v${updateInfo.latestVersion}",
+                            fontSize = 11.5.sp,
+                            color = Color(0xFF64748B)
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFEEF2FF)
+                    ) {
+                        Text(
+                            text = "v${updateInfo.latestVersion}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4F46E5),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                // 更新日志展示区
+                Text(
+                    text = "更新内容：",
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF334155)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 200.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFF8FAFC))
+                        .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = updateInfo.releaseNotes.ifBlank { "包含多项性能优化与体验升级。" },
+                        fontSize = 11.5.sp,
+                        color = Color(0xFF475569),
+                        lineHeight = 17.sp
+                    )
+                }
+
+                // 错误提示
+                if (!downloadError.isNullOrBlank()) {
+                    Text(
+                        text = "下载中断: $downloadError",
+                        fontSize = 11.sp,
+                        color = Color(0xFFDC2626)
+                    )
+                }
+
+                // 下载进度条
+                if (isDownloading) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "正在下载新版本安装包...",
+                                fontSize = 11.sp,
+                                color = Color(0xFF4338CA)
+                            )
+                            Text(
+                                text = "$downloadProgress%",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF4338CA)
+                            )
+                        }
+                        LinearProgressIndicator(
+                            progress = { downloadProgress / 100f },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp)),
+                            color = Color(0xFF4F46E5),
+                            trackColor = Color(0xFFEEF2FF)
+                        )
+                    }
+                }
+
+                // 操作按钮组
+                if (isDownloading) {
+                    Text(
+                        text = "下载过程中请勿退出，完成后将自动拉起系统安装确认",
+                        fontSize = 10.5.sp,
+                        color = Color(0xFF94A3B8),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else if (downloadedFile != null && downloadedFile.exists()) {
+                    Button(
+                        onClick = { onInstall(downloadedFile) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
+                    ) {
+                        Text("下载完成，立即覆盖安装", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(42.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("稍后再说", fontSize = 12.sp, color = Color(0xFF64748B))
+                        }
+
+                        Button(
+                            onClick = onStartDownload,
+                            modifier = Modifier
+                                .weight(1.5f)
+                                .height(42.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5))
+                        ) {
+                            Text(
+                                text = if (downloadError != null) "重试下载" else "立即下载更新",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

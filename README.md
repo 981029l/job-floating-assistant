@@ -43,7 +43,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.2.6-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.4/JobAssistant-v1.2.6-debug.apk)
+- **最新正式版直链**：[JobAssistant-v1.2.7-debug.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.2.4/JobAssistant-v1.2.7-debug.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -104,6 +104,11 @@ job-floating-assistant/
 
 ## 版本演进记录
 
+- **v1.2.7**：
+  - 应用内全自动检查更新与一键覆盖安装升级：彻底告别用户手动前往 GitHub 寻找并下载 APK 的繁琐流程；
+  - 启动静默探测 + 设置页手动检查双通道：有新版本自动弹出优雅更新卡片，设置页可随时一键主动查询；
+  - 流式多通道下载引擎：复用高性能 OkHttp 实时反馈百分比进度，支持官方直链与国内镜像加速备选，保障弱网与移动网络秒速下载；
+  - 原生安全安装闭环：合规集成 FileProvider 与未知应用安装引导，下载完成一键直接调起系统安装确认框，原有 API Key 与求职档案无损保留。
 - **v1.2.6**：
   - 全链路 6 档招聘场景全覆盖：接入「简历转交技术人员评估」官方专属提示词；
   - 智能无障碍场景嗅探：自动识别 HR 回复中“转给技术看/发给部门/评估一下/看过之后联系”等意图，秒级预选技术评估 Tab；
