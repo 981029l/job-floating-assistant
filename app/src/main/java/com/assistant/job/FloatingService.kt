@@ -15,6 +15,9 @@ import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
+import android.text.Editable
+import android.text.TextUtils
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -46,6 +49,7 @@ class FloatingService : Service() {
     private var dialogOverlayView: View? = null
 
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
+    private var currentGenerationJob: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -189,7 +193,7 @@ class FloatingService : Service() {
 
         val displayMetrics = resources.displayMetrics
         val dialogWidth = (displayMetrics.widthPixels * 0.92).toInt()
-        val dialogHeight = (displayMetrics.heightPixels * 0.70).toInt()
+        val dialogHeight = (displayMetrics.heightPixels * 0.72).toInt()
 
         val params = WindowManager.LayoutParams(
             dialogWidth,
@@ -199,6 +203,7 @@ class FloatingService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.CENTER
+            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
         }
 
         val density = resources.displayMetrics.density
@@ -226,7 +231,7 @@ class FloatingService : Service() {
             }
         }
         val titleView = TextView(this).apply {
-            text = "AI 定制打招呼语 (DeepSeek 已就绪)"
+            text = "AI 定制打招呼语"
             textSize = 14f
             setTextColor(Color.parseColor("#1E293B"))
             paint.isFakeBoldText = true
@@ -245,7 +250,237 @@ class FloatingService : Service() {
         headerLayout.addView(closeBtn)
         rootLayout.addView(headerLayout)
 
-        // 滚动内容容器
+        // -------------------------------------------------------------
+        // 岗位 JD 识别与校对卡片 (支持查看已识别文字、手动编辑、剪贴板粘贴与重新生成)
+        // -------------------------------------------------------------
+        val jdCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((12 * density).toInt(), (10 * density).toInt(), (12 * density).toInt(), (10 * density).toInt())
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#F8FAFC"))
+                cornerRadius = 14 * density
+                setStroke((1.5f * density).toInt(), Color.parseColor("#E2E8F0"))
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = (8 * density).toInt()
+                bottomMargin = (6 * density).toInt()
+            }
+        }
+
+        // 1. 卡片顶栏（状态徽章 + 标题 + 展开/收起按钮）
+        val jdHeaderRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val jdStatusBadge = TextView(this).apply {
+            val count = initialJd.length
+            if (count >= 20) {
+                text = "✓ 识别成功 · $count 字"
+                setTextColor(Color.parseColor("#059669"))
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#ECFDF5"))
+                    cornerRadius = 6 * density
+                }
+            } else {
+                text = "⚠ 未读全 · 需手动粘贴"
+                setTextColor(Color.parseColor("#D97706"))
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#FFFBEB"))
+                    cornerRadius = 6 * density
+                }
+            }
+            textSize = 11f
+            paint.isFakeBoldText = true
+            setPadding((6 * density).toInt(), (2 * density).toInt(), (6 * density).toInt(), (2 * density).toInt())
+        }
+
+        val jdTitleView = TextView(this).apply {
+            text = "岗位 JD 识别与校对"
+            textSize = 12.5f
+            setTextColor(Color.parseColor("#1E293B"))
+            paint.isFakeBoldText = true
+            setPadding((8 * density).toInt(), 0, 0, 0)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+
+        val toggleBtn = TextView(this).apply {
+            text = if (initialJd.length >= 20) "校对/修改 ▾" else "收起 ▴"
+            textSize = 11.5f
+            setTextColor(Color.parseColor("#2563EB"))
+            paint.isFakeBoldText = true
+            setPadding((8 * density).toInt(), (3 * density).toInt(), (8 * density).toInt(), (3 * density).toInt())
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#EFF6FF"))
+                cornerRadius = 6 * density
+            }
+        }
+
+        jdHeaderRow.addView(jdStatusBadge)
+        jdHeaderRow.addView(jdTitleView)
+        jdHeaderRow.addView(toggleBtn)
+        jdCard.addView(jdHeaderRow)
+
+        // 2. 折叠状态下的单行预览摘要
+        val previewSnippet = TextView(this).apply {
+            text = if (initialJd.isNotBlank()) {
+                "预览: " + initialJd.replace("\n", " ").trim()
+            } else {
+                "（暂无屏幕文本，点击右侧展开可直接粘贴岗位要求）"
+            }
+            textSize = 11f
+            setTextColor(Color.parseColor("#64748B"))
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+            setPadding(0, (6 * density).toInt(), 0, 0)
+            visibility = if (initialJd.length >= 20) View.VISIBLE else View.GONE
+        }
+        jdCard.addView(previewSnippet)
+
+        // 3. 展开后的完整编辑与控制区
+        val jdEditSection = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, (8 * density).toInt(), 0, 0)
+            visibility = if (initialJd.length >= 20) View.GONE else View.VISIBLE
+        }
+
+        val jdEditText = EditText(this).apply {
+            setText(initialJd)
+            hint = "若自动识别不准，可在此手动修改，或点击下方【粘贴剪贴板】..."
+            textSize = 12f
+            setTextColor(Color.parseColor("#1E293B"))
+            minLines = 3
+            maxLines = 6
+            setLineSpacing(3f, 1.15f)
+            background = GradientDrawable().apply {
+                setColor(Color.WHITE)
+                cornerRadius = 10 * density
+                setStroke((1 * density).toInt(), Color.parseColor("#CBD5E1"))
+            }
+            setPadding((10 * density).toInt(), (10 * density).toInt(), (10 * density).toInt(), (10 * density).toInt())
+        }
+
+        // 操作按钮行（粘贴剪贴板、清空、按新JD重新生成）
+        val actionRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, (8 * density).toInt(), 0, 0)
+        }
+
+        val pasteBtn = Button(this).apply {
+            text = "📋 粘贴剪贴板"
+            textSize = 11.5f
+            setTextColor(Color.parseColor("#2563EB"))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#EFF6FF"))
+                cornerRadius = 8 * density
+                setStroke((1 * density).toInt(), Color.parseColor("#BFDBFE"))
+            }
+            layoutParams = LinearLayout.LayoutParams(0, (36 * density).toInt(), 1f).apply {
+                rightMargin = (6 * density).toInt()
+            }
+            setOnClickListener {
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = clipboard.primaryClip
+                if (clip != null && clip.itemCount > 0) {
+                    val clipText = clip.getItemAt(0).text?.toString() ?: ""
+                    if (clipText.isNotBlank()) {
+                        jdEditText.setText(clipText)
+                        jdEditText.setSelection(clipText.length)
+                        Toast.makeText(this@FloatingService, "已粘贴剪贴板内容（共 ${clipText.length} 字）", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this@FloatingService, "剪贴板文本为空", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(this@FloatingService, "剪贴板无可用内容", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+        val clearBtn = Button(this).apply {
+            text = "清空"
+            textSize = 11.5f
+            setTextColor(Color.parseColor("#64748B"))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#F1F5F9"))
+                cornerRadius = 8 * density
+            }
+            layoutParams = LinearLayout.LayoutParams((52 * density).toInt(), (36 * density).toInt()).apply {
+                rightMargin = (6 * density).toInt()
+            }
+            setOnClickListener {
+                jdEditText.setText("")
+            }
+        }
+
+        val regenerateBtn = Button(this).apply {
+            text = "🚀 按此JD重新生成"
+            textSize = 11.5f
+            setTextColor(Color.WHITE)
+            paint.isFakeBoldText = true
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#2563EB"))
+                cornerRadius = 8 * density
+            }
+            layoutParams = LinearLayout.LayoutParams(0, (36 * density).toInt(), 1.35f)
+        }
+
+        actionRow.addView(pasteBtn)
+        actionRow.addView(clearBtn)
+        actionRow.addView(regenerateBtn)
+
+        jdEditSection.addView(jdEditText)
+        jdEditSection.addView(actionRow)
+        jdCard.addView(jdEditSection)
+
+        rootLayout.addView(jdCard)
+
+        // 监听编辑框字符数变化，动态刷新徽章
+        jdEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                val len = s?.length ?: 0
+                if (len >= 20) {
+                    jdStatusBadge.text = "✓ 已就绪 · $len 字"
+                    jdStatusBadge.setTextColor(Color.parseColor("#059669"))
+                    (jdStatusBadge.background as? GradientDrawable)?.setColor(Color.parseColor("#ECFDF5"))
+                } else {
+                    jdStatusBadge.text = "⚠ 内容较短 · $len 字"
+                    jdStatusBadge.setTextColor(Color.parseColor("#D97706"))
+                    (jdStatusBadge.background as? GradientDrawable)?.setColor(Color.parseColor("#FFFBEB"))
+                }
+            }
+        })
+
+        // 折叠 / 展开交互
+        val toggleAction = {
+            val isExpanded = jdEditSection.visibility == View.VISIBLE
+            if (isExpanded) {
+                jdEditSection.visibility = View.GONE
+                previewSnippet.visibility = View.VISIBLE
+                val currentText = jdEditText.text.toString().trim()
+                previewSnippet.text = if (currentText.isNotBlank()) {
+                    "预览: " + currentText.replace("\n", " ")
+                } else {
+                    "（暂无岗位内容，点击展开可粘贴）"
+                }
+                toggleBtn.text = "校对/修改 ▾"
+            } else {
+                jdEditSection.visibility = View.VISIBLE
+                previewSnippet.visibility = View.GONE
+                toggleBtn.text = "收起 ▴"
+                jdEditText.requestFocus()
+            }
+        }
+
+        toggleBtn.setOnClickListener { toggleAction() }
+        previewSnippet.setOnClickListener { toggleAction() }
+
+        // 滚动内容容器（放置 AI 生成的话术卡片）
         val scrollView = ScrollView(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -255,18 +490,36 @@ class FloatingService : Service() {
         }
         val contentContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, (10 * density).toInt(), 0, (8 * density).toInt())
+            setPadding(0, (6 * density).toInt(), 0, (6 * density).toInt())
         }
         scrollView.addView(contentContainer)
         rootLayout.addView(scrollView)
 
+        // 绑定重新生成按钮点击事件
+        regenerateBtn.setOnClickListener {
+            val customJd = jdEditText.text.toString().trim()
+            if (customJd.length < 10) {
+                Toast.makeText(this@FloatingService, "岗位 JD 至少需要 10 个字，请检查输入或点击粘贴", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            // 折叠编辑面板，给下方生成卡片留出最大可视空间
+            jdEditSection.visibility = View.GONE
+            previewSnippet.visibility = View.VISIBLE
+            previewSnippet.text = "预览: " + customJd.replace("\n", " ")
+            toggleBtn.text = "校对/修改 ▾"
+
+            Toast.makeText(this@FloatingService, "已应用最新 JD，正在为您生成匹配话术...", Toast.LENGTH_SHORT).show()
+            triggerAiGeneration(contentContainer, customJd)
+        }
+
         // 底部提示栏
         val footerTip = TextView(this).apply {
-            text = "✓ 已成功识别当前屏幕 JD · 点击按钮自动写入手机剪贴板"
-            textSize = 10f
+            text = "💡 提示：若岗位的任职要求较长，建议在BOSS上下滑动一次或长按复制后在此粘贴"
+            textSize = 10.5f
             setTextColor(Color.parseColor("#64748B"))
             gravity = Gravity.CENTER
-            setPadding(0, (8 * density).toInt(), 0, (2 * density).toInt())
+            setPadding(0, (6 * density).toInt(), 0, (2 * density).toInt())
         }
         rootLayout.addView(footerTip)
 
@@ -281,109 +534,41 @@ class FloatingService : Service() {
         if (initialJd.length >= 20) {
             triggerAiGeneration(contentContainer, initialJd)
         } else {
-            // 如果自动读屏由于权限或厂商屏蔽未读到内容，显示手动输入/粘贴面板
-            showManualJdInput(contentContainer)
-        }
-    }
-
-    private fun showManualJdInput(container: LinearLayout) {
-        container.removeAllViews()
-        val density = resources.displayMetrics.density
-
-        val tipText = TextView(this).apply {
-            text = "提示：未能通过无障碍自动读到屏幕文字。\n您可直接点击下方【粘贴剪贴板】快速生成："
-            setTextColor(Color.parseColor("#D48806"))
-            textSize = 13f
-            setPadding(0, 0, 0, (8 * density).toInt())
-        }
-
-        val jdInput = EditText(this).apply {
-            hint = "此处长按粘贴当前岗位的职责或任职要求..."
-            textSize = 13f
-            setTextColor(Color.DKGRAY)
-            minLines = 4
-            maxLines = 6
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#F5F5F5"))
-                cornerRadius = 12 * density
-                setStroke(1, Color.LTGRAY)
+            // 如果初次识别没有达到 20 字，在下方展示友好引导
+            contentContainer.removeAllViews()
+            val promptTip = TextView(this).apply {
+                text = "📌 屏幕文字未完全识别\n请在上方卡片中检查并点击【📋 粘贴剪贴板】，然后点击【🚀 按此JD重新生成】。"
+                setTextColor(Color.parseColor("#64748B"))
+                textSize = 13f
+                gravity = Gravity.CENTER
+                setPadding(0, (24 * density).toInt(), 0, 0)
+                setLineSpacing(4f, 1.2f)
             }
-            setPadding((12 * density).toInt(), (12 * density).toInt(), (12 * density).toInt(), (12 * density).toInt())
+            contentContainer.addView(promptTip)
         }
-
-        val btnLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, (12 * density).toInt(), 0, 0)
-        }
-
-        val pasteBtn = Button(this).apply {
-            text = "粘贴剪贴板"
-            textSize = 12f
-            setTextColor(Color.parseColor("#1677FF"))
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#E6F4FF"))
-                cornerRadius = 10 * density
-            }
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                rightMargin = (8 * density).toInt()
-            }
-            setOnClickListener {
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = clipboard.primaryClip
-                if (clip != null && clip.itemCount > 0) {
-                    val text = clip.getItemAt(0).text?.toString() ?: ""
-                    jdInput.setText(text)
-                } else {
-                    Toast.makeText(this@FloatingService, "剪贴板为空", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-
-        val generateBtn = Button(this).apply {
-            text = "立即生成"
-            textSize = 13f
-            setTextColor(Color.WHITE)
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#1677FF"))
-                cornerRadius = 10 * density
-            }
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.2f)
-            setOnClickListener {
-                val input = jdInput.text.toString().trim()
-                if (input.length < 10) {
-                    Toast.makeText(this@FloatingService, "请先输入或粘贴至少 10 个字的岗位 JD", Toast.LENGTH_SHORT).show()
-                } else {
-                    triggerAiGeneration(container, input)
-                }
-            }
-        }
-
-        btnLayout.addView(pasteBtn)
-        btnLayout.addView(generateBtn)
-
-        container.addView(tipText)
-        container.addView(jdInput)
-        container.addView(btnLayout)
     }
 
     private fun triggerAiGeneration(container: LinearLayout, jdText: String) {
+        currentGenerationJob?.cancel()
         container.removeAllViews()
         val density = resources.displayMetrics.density
 
         val progressBar = ProgressBar(this).apply {
             isIndeterminate = true
         }
+        val currentModel = PreferencesManager.getModel(this)
         val loadingText = TextView(this).apply {
-            text = "正在深度匹配您的简历与岗位 JD...\n（调用 DeepSeek 极速生成中）"
-            setTextColor(Color.DKGRAY)
-            textSize = 14f
+            text = "正在深度解析岗位要求与简历匹配点...\n（调用 $currentModel 极速生成中）"
+            setTextColor(Color.parseColor("#334155"))
+            textSize = 13f
             gravity = Gravity.CENTER
             setPadding(0, (16 * density).toInt(), 0, 0)
+            setLineSpacing(3f, 1.15f)
         }
         container.addView(progressBar)
         container.addView(loadingText)
 
-        serviceScope.launch {
+        currentGenerationJob = serviceScope.launch {
             val result = DeepSeekClient.generateGreetings(this@FloatingService, jdText)
             withContext(Dispatchers.Main) {
                 container.removeAllViews()
@@ -393,17 +578,42 @@ class FloatingService : Service() {
                         container.addView(card)
                     }
                 }.onFailure { err ->
+                    val errorCard = LinearLayout(this@FloatingService).apply {
+                        orientation = LinearLayout.VERTICAL
+                        setPadding((16 * density).toInt(), (16 * density).toInt(), (16 * density).toInt(), (16 * density).toInt())
+                        background = GradientDrawable().apply {
+                            setColor(Color.parseColor("#FEF2F2"))
+                            cornerRadius = 12 * density
+                            setStroke((1 * density).toInt(), Color.parseColor("#FECACA"))
+                        }
+                    }
                     val errorView = TextView(this@FloatingService).apply {
-                        text = "生成失败：${err.localizedMessage}\n\n请检查主界面中的 API Key、模型名称或网络连接。"
-                        setTextColor(Color.RED)
-                        textSize = 14f
+                        text = "生成遇到问题：${err.localizedMessage ?: "未知错误"}\n\n建议检查网络连接、API Key或在上方重新修改岗位JD。"
+                        setTextColor(Color.parseColor("#DC2626"))
+                        textSize = 13f
+                        setLineSpacing(3f, 1.15f)
                     }
                     val retryBtn = Button(this@FloatingService).apply {
-                        text = "重试 / 手动输入"
-                        setOnClickListener { showManualJdInput(container) }
+                        text = "重试当前 JD 生成"
+                        textSize = 12f
+                        setTextColor(Color.WHITE)
+                        background = GradientDrawable().apply {
+                            setColor(Color.parseColor("#DC2626"))
+                            cornerRadius = 8 * density
+                        }
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            (36 * density).toInt()
+                        ).apply {
+                            topMargin = (10 * density).toInt()
+                        }
+                        setOnClickListener {
+                            triggerAiGeneration(container, jdText)
+                        }
                     }
-                    container.addView(errorView)
-                    container.addView(retryBtn)
+                    errorCard.addView(errorView)
+                    errorCard.addView(retryBtn)
+                    container.addView(errorCard)
                 }
             }
         }

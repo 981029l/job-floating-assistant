@@ -41,7 +41,7 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.0.6-debug.apk
+          cp app/build/outputs/apk/debug/*.apk release_apk/JobAssistant-v1.0.7-debug.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -54,15 +54,16 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.6
-          name: "AI求职悬浮助手 v1.0.6 (全套高保真概念图实现版)"
+          tag_name: v1.0.7
+          name: "AI求职悬浮助手 v1.0.7 (悬浮窗岗位JD识别预览与手动修改/剪贴板覆盖)"
           body: |
-            🎉 **AI 求职悬浮助手 v1.0.6 正式发布**：
-            1. 📱 **页面 1【悬浮主控 Dashboard】**：Bento 触控大开关、C1招手好运猫顶栏呼吸光效、核心权限自检与模型快捷切换；
-            2. 📄 **页面 2【求职档案 Profile】**：紫色高光简历上传卡片，支持 PDF/Word 文件解析导入与结构化技能标签呈现；
-            3. ⚙️ **页面 3【AI智囊设置 Settings】**：API Key 密文管理、Base URL 配置、联网获取可用模型列表与自定义 Prompt 规则；
-            4. ⚡ **页面 4【BOSS悬浮实测 Floating Overlay】**：C1 招手好运猫全局圆形浮标，带【技术硬核攻坚型】与【全面契合交流型】双卡片一键复制闭环。
-          files: release_apk/JobAssistant-v1.0.6-debug.apk
+            🎉 **AI 求职悬浮助手 v1.0.7 更新日志**：
+            1. 🔍 **新增【岗位 JD 识别状态与字数徽章】**：点击悬浮球后，在弹窗顶部直接展示已识别到的字数与状态（如「✓ 识别成功 · 258 字」）；
+            2. 📋 **新增【JD 实时预览与单行折叠摘要】**：默认展示已读屏文本摘要，可随时点击【校对/修改 ▾】展开完整文本进行核验；
+            3. ✏️ **新增【多行手动编辑与剪贴板一键覆盖】**：若屏幕自动识别有遗漏或不准，支持长按修改，或一键点击【📋 粘贴剪贴板】快速替换；
+            4. 🚀 **新增【按新 JD 重新生成】闭环**：修改或粘贴完成后，点击【🚀 按此JD重新生成】，即刻调用 AI 重算并输出高匹配度定制打招呼语；
+            5. 🛡️ **体验优化**：优化 WindowManager 软键盘弹起自适应（`SOFT_INPUT_ADJUST_RESIZE`），并增加异步生成任务防重取消控制。
+          files: release_apk/JobAssistant-v1.0.7-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
