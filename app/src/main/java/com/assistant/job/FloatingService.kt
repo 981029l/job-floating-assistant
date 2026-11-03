@@ -556,7 +556,7 @@ class FloatingService : Service() {
         val progressBar = ProgressBar(this).apply {
             isIndeterminate = true
         }
-        val currentModel = PreferencesManager.getModel(this)
+        val currentModel = StorageManager.getModel(this)
         val loadingText = TextView(this).apply {
             text = "正在深度解析岗位要求与简历匹配点...\n（调用 $currentModel 极速生成中）"
             setTextColor(Color.parseColor("#334155"))
