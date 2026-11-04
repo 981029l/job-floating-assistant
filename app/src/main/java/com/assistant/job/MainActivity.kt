@@ -3027,9 +3027,9 @@ fun SettingsTab(
                             @Suppress("DEPRECATION")
                             context.packageManager.getPackageInfo(context.packageName, 0)
                         }
-                        pInfo.versionName ?: "1.3.8"
+                        pInfo.versionName ?: "1.3.9"
                     } catch (e: Exception) {
-                        "1.3.8"
+                        "1.3.9"
                     }
                 }
 

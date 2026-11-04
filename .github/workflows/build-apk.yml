@@ -39,7 +39,7 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.3.8.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.3.9.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -52,15 +52,16 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.3.8
-          name: "AI求职助手 v1.3.8 (终结虚构痛点/清单对照加分项突围/简历对齐精准推销)"
+          tag_name: v1.3.9
+          name: "AI求职助手 v1.3.9 (五大终极推销心智规则/语法从属位/跨界上限为二/王牌主动出击)"
           body: |
-            AI 求职助手 v1.3.8 重大更新说明：
-            1. 彻底终结虚构痛点与假大空玄学：全面转向「采购清单对照 + 加分项突围 + 简历对齐自荐推销」商业本质；
-            2. 落地【显式三要素核对流水线】：拆解日常职责、准入门槛与加分偏好项，以加分项为差异化第一推销王牌；
-            3. 双全新风格上线：【核心职责对齐型】（全面胜任即插即用）与【加分优势突围型】（精准命中加分偏好压倒性突围）；
-            4. 正式产物 APK 名：JobAssistant-v1.3.8.apk（继承持久签名，无缝覆盖升级）。
-          files: release_apk/JobAssistant-v1.3.8.apk
+            AI 求职助手 v1.3.9 重大更新说明：
+            1. 落地五大终极推销心智规则（通过 grill-me 压力拷问验证）：主战场基石层(60%) + 硬底盘骨干层(30%) + 点缀层语法从属位(10%)；
+            2. 彻底根除加分项反客为主：加分项强制锁定在第二句末尾从属位（“同时具备/也涉及……”），绝对严禁拿边缘加分词当开局主语；
+            3. 跨界代表作上限为二法则：允许最多带出 2 个不同领域的代表业务系统展示广度，彻底消灭 3 个以上无脑报菜名大串烧；
+            4. 极简 JD 王牌出击机制：未标明具体业务时拿出最复杂商业项目反向吸引；
+            5. 正式产物 APK 名：JobAssistant-v1.3.9.apk（继承持久签名，无缝覆盖升级）。
+          files: release_apk/JobAssistant-v1.3.9.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

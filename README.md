@@ -43,7 +43,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.3.8.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.3.8/JobAssistant-v1.3.8.apk)
+- **最新正式版直链**：[JobAssistant-v1.3.9.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.3.9/JobAssistant-v1.3.9.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -104,6 +104,12 @@ job-floating-assistant/
 
 ## 版本演进记录
 
+- **v1.3.9**：
+  - 落地五大终极推销心智规则（通过 grill-me 压力拷问验证）：主战场基石层(60%) + 硬底盘骨干层(30%) + 点缀层语法从属位(10%)；
+  - 彻底根除加分项反客为主：加分项强制锁定在第二句末尾从属位（“同时具备/也涉及……”），绝对严禁拿边缘加分词当开局主语，严禁反客为主定性对方公司业务；
+  - 跨界代表作上限为二法则：允许最多带出 2 个不同领域的代表业务系统展示广度，彻底消灭 3 个以上无脑报菜名大串烧；
+  - 极简 JD 王牌出击机制：未标明具体业务时主动拿出最复杂商业项目反向吸引；
+  - 正式产物 JobAssistant-v1.3.9.apk（继承持久签名，支持无缝覆盖安装）。
 - **v1.3.8**：
   - 彻底终结虚构痛点与假大空玄学：全面转向「采购清单对照 + 加分项突围 + 简历对齐自荐推销」商业本质；
   - 落地【显式三要素核对流水线】：拆解日常职责、准入门槛与加分偏好项，以加分项为差异化第一推销王牌；
