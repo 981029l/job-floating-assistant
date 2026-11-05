@@ -258,20 +258,12 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
                         put("content", basePrompt)
                     })
                     val userPromptContent = """
-【核心任务】：你正在充当求职者本人在招聘平台上的自荐推销话筒。
-请根据目标岗位 JD 严格执行【四大法典与推销心智规则】对照简历完成推销：
-1. 【基石层主战场（权重 60%）】：第一句话必须以【岗位职责】排在前列的主营业务载体为主语切入！若未描述具体业务系统或极其抽象，提取王牌项目具象的系统物理形态融合切入；
-2. 【骨干层硬底盘（权重 30%）】：第二句前半句证明主力技术栈硬实力。已有主流现代工程栈时，严禁倒退罗列 HTML/CSS/JavaScript 等常识语言；
-3. 【点缀层加分项（权重 10%，语法从属位）】：仅限技术与业务硬卖点，首条全场景严禁将带人、指导初级、团队协作等软素质当卖点！加分项强制锁死在第二句末尾从属位（“同时具备/也涉及……”），绝对严禁反客为主；
-4. 【第二句双微型分句法则（32-42字，严控 2 逗号）】：前半微句[技术栈+代表作]紧接后半微句[攻坚与从属加分]，跨界代表作上限为二，严禁大串烧；
-5. 【收尾去套话】：严禁在未明业务时空泛套用“方向很契合”，必须就事论事收窄为实战技术工程维度的交付契合。
-- 严禁假装顾问反问对方技术卡点或挑战！严禁使用“有很高标准”等虚伪奉承！
-- 严禁无中生有编造性能百分比！若无明确数据只陈述真实业务落地。
+请仔细分析以下【目标岗位 JD】与【候选人简历储备】，严格遵循系统提示中的双轨判定与输出规范，生成针对性的破冰打招呼语：
 
-【目标岗位 JD（采购清单）】：
-${jdText.ifBlank { "（通用技术岗位要求）" }}
+【目标岗位 JD】：
+${jdText.ifBlank { "（通用技术开发岗位要求，请基于通用技术能力与架构实战匹配）" }}
 
-【候选人简历储备（产品说明书）】：
+【候选人简历储备】：
 ${resume.ifBlank { "（未录入完整简历）" }}
 """.trimIndent()
                     put(JSONObject().apply {
@@ -399,7 +391,7 @@ ${resume.ifBlank { "（未录入完整简历）" }}
             val part2 = cleaned.substring(m2.range.last + 1).trim()
             if (part1.isNotBlank()) list.add(GreetingOption(title1, part1))
             if (part2.isNotBlank()) list.add(GreetingOption(title2, part2))
-            return list
+            return list.map { it.copy(text = sanitizeGreetingText(it.text, mode, jdText)) }
         }
 
         // 2. 次级单行行内切分
@@ -413,7 +405,7 @@ ${resume.ifBlank { "（未录入完整简历）" }}
             val part2 = cleaned.substring(im2.range.last + 1).trim()
             if (part1.isNotBlank()) list.add(GreetingOption(title1, part1))
             if (part2.isNotBlank()) list.add(GreetingOption(title2, part2))
-            return list
+            return list.map { it.copy(text = sanitizeGreetingText(it.text, mode, jdText)) }
         }
 
         // 3. 兜底策略：若大模型以双换行分段输出了两段具有一定长度的候选内容
@@ -421,7 +413,7 @@ ${resume.ifBlank { "（未录入完整简历）" }}
         if (paragraphs.size >= 2) {
             list.add(GreetingOption(title1, paragraphs[0]))
             list.add(GreetingOption(title2, paragraphs[1]))
-            return list
+            return list.map { it.copy(text = sanitizeGreetingText(it.text, mode, jdText)) }
         }
 
         val fallbackTitle = if (mode == GenerationMode.IN_DEPTH_CHAT) "面试转化回复" else "精选破冰语"
@@ -456,6 +448,13 @@ ${resume.ifBlank { "（未录入完整简历）" }}
 
         if (!jdHasAi && mode == GenerationMode.FIRST_ICEBREAK) {
             result = result
+                .replace("企业级AI知识库与多端前端架构开发是我主场", "大型企业级系统与多端前端架构开发是我的核心方向")
+                .replace("企业级AI知识库与多端前端架构", "大型系统与多端前端架构")
+                .replace("企业级AI知识库", "大型企业级系统")
+                .replace("AI知识库与直播平台", "企业级系统与高并发平台")
+                .replace("AI知识库", "企业级业务系统")
+                .replace("具备SSE流式交互", "具备高性能交互设计")
+                .replace("是我主场", "是我的核心方向")
                 .replace("多端产品与 AI 能力的前端落地", "多端产品与交互架构的前端落地")
                 .replace("多端产品与 AI 能力的落地", "多端产品与交互架构的落地")
                 .replace("多端产品与 AI 能力", "多端产品与交互架构")

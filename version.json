@@ -1,6 +1,6 @@
 {
-  "versionCode": 40,
-  "versionName": "1.4.0",
-  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.4.0/JobAssistant-v1.4.0.apk",
-  "releaseNotes": "1. 落地四大新法典（grill-me 深度压力拷问通过）：全场景封杀软素质与管理职责，首条破冰 100% 聚焦硬核业务与技术交付；\n2. 基石语言升维压制法则：现代主流框架优先，具备 Vue3/React/TS 时彻底剔除倒退罗列 HTML/CSS/JS 常识语言；\n3. 抽象极简 JD 物理形态具象化与收尾去套话：提炼企业级系统形态融合主语，收尾严禁空泛自嗨“方向契合”，收窄为实战交付契合；\n4. 第二句双微型分句呼吸感法则：全句严控 32-42 字与最多 2 个逗号，[技术栈+项目] 紧接 [攻坚/从属加分]，彻底消灭窒息大长句；继承持久签名支持覆盖升级。"
+  "versionCode": 41,
+  "versionName": "1.4.1",
+  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.4.1/JobAssistant-v1.4.1.apk",
+  "releaseNotes": "1. 彻底终结法典补丁地狱：拔除过载的微观数字枷锁（字数/逗号数/权重），轻装上阵释放模型语义推理 Attention；\n2. JD 属性双轨判定：区分具象业务型 JD 与通用架构型 JD，彻底根治通用岗位反客为主强推 AI 知识库的自嗨 Bug；\n3. 真实场景 Few-Shot 正反少样本驱动：内置真实岗位正反案例对照示范，语义对齐率大幅跃升；\n4. 解除自定义提示词静默拦截：修复旧版硬编码判定导致自定义 Prompt 被强制回退的底层缺陷，增强非 AI 岗位物理防护安全网。"
 }
