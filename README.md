@@ -43,7 +43,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.3.9.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.3.9/JobAssistant-v1.3.9.apk)
+- **最新正式版直链**：[JobAssistant-v1.4.0.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.4.0/JobAssistant-v1.4.0.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -104,6 +104,12 @@ job-floating-assistant/
 
 ## 版本演进记录
 
+- **v1.4.0**：
+  - 落地四大新法典（grill-me 深度压力拷问通过）：全场景封杀软素质与管理职责，首条破冰 100% 聚焦硬核业务战功与技术交付；
+  - 基石语言升维压制法则：现代主流框架优先，具备 Vue3/React/TS 时彻底剔除倒退罗列 HTML/CSS/JS 常识语言；
+  - 抽象极简 JD 物理形态具象化与收尾去套话：提炼企业级系统形态融合主语，收尾严禁空泛自嗨“方向契合”，收窄为实战交付契合；
+  - 第二句双微型分句呼吸感法则：全句严控 32-42 字与最多 2 个逗号，[技术栈+项目] 紧接 [攻坚/从属加分]，彻底消灭窒息大长句；
+  - 正式产物 JobAssistant-v1.4.0.apk（继承持久签名，支持无缝覆盖安装）。
 - **v1.3.9**：
   - 落地五大终极推销心智规则（通过 grill-me 压力拷问验证）：主战场基石层(60%) + 硬底盘骨干层(30%) + 点缀层语法从属位(10%)；
   - 彻底根除加分项反客为主：加分项强制锁定在第二句末尾从属位（“同时具备/也涉及……”），绝对严禁拿边缘加分词当开局主语，严禁反客为主定性对方公司业务；

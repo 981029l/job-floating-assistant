@@ -39,7 +39,7 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.3.9.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.0.apk
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -52,16 +52,16 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.3.9
-          name: "AI求职助手 v1.3.9 (五大终极推销心智规则/语法从属位/跨界上限为二/王牌主动出击)"
+          tag_name: v1.4.0
+          name: "AI求职助手 v1.4.0 (四大新法典落地/封杀软素质/基石语言升维/双微型分句呼吸感)"
           body: |
-            AI 求职助手 v1.3.9 重大更新说明：
-            1. 落地五大终极推销心智规则（通过 grill-me 压力拷问验证）：主战场基石层(60%) + 硬底盘骨干层(30%) + 点缀层语法从属位(10%)；
-            2. 彻底根除加分项反客为主：加分项强制锁定在第二句末尾从属位（“同时具备/也涉及……”），绝对严禁拿边缘加分词当开局主语；
-            3. 跨界代表作上限为二法则：允许最多带出 2 个不同领域的代表业务系统展示广度，彻底消灭 3 个以上无脑报菜名大串烧；
-            4. 极简 JD 王牌出击机制：未标明具体业务时拿出最复杂商业项目反向吸引；
-            5. 正式产物 APK 名：JobAssistant-v1.3.9.apk（继承持久签名，无缝覆盖升级）。
-          files: release_apk/JobAssistant-v1.3.9.apk
+            AI 求职助手 v1.4.0 重大更新说明：
+            1. 落地四大新法典（grill-me 深度压力拷问通过）：全场景封杀软素质与管理职责，首条破冰 100% 聚焦硬核业务与技术交付；
+            2. 基石语言升维压制法则：现代主流框架优先，具备 Vue3/React/TS 时彻底剔除倒退罗列 HTML/CSS/JS 常识语言；
+            3. 抽象极简 JD 物理形态具象化与收尾去套话：提炼企业级系统形态融合主语，收尾严禁空泛自嗨“方向契合”，收窄为实战交付契合；
+            4. 第二句双微型分句呼吸感法则：全句严控 32-42 字与最多 2 个逗号，[技术栈+项目] 紧接 [攻坚/从属加分]，彻底消灭窒息大长句；
+            5. 正式产物 APK 名：JobAssistant-v1.4.0.apk（继承持久签名，无缝覆盖升级）。
+          files: release_apk/JobAssistant-v1.4.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
