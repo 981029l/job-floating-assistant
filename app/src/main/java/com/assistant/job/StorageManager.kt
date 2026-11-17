@@ -27,6 +27,7 @@ object StorageManager {
     private const val KEY_EXP2 = "experience_2"
     private const val KEY_AI_SUMMARY = "ai_summary"
     private const val KEY_CUSTOM_TAGS = "custom_tech_tags"
+    private const val KEY_GENERATION_ERROR = "last_generation_error"
 
     const val DEFAULT_BASE_URL = "https://api.deepseek.com/v1"
     const val DEFAULT_MODEL = "deepseek-flash"
@@ -508,6 +509,21 @@ HR 已经收到候选人简历，并明确表示将简历转交给技术人员�
             return DEFAULT_SYSTEM_PROMPT
         }
         return prompt
+    }
+
+    fun saveGenerationError(context: Context, report: String) {
+        getPrefs(context).edit().putString(KEY_GENERATION_ERROR, report).apply()
+    }
+
+    fun getGenerationError(context: Context): String = getPrefs(context).getString(KEY_GENERATION_ERROR, "").orEmpty()
+
+    fun observeGenerationError(context: Context, onChange: (String) -> Unit): () -> Unit {
+        val prefs = getPrefs(context)
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == KEY_GENERATION_ERROR) onChange(getGenerationError(context))
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        return { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
     fun saveBubbleSize(context: Context, sizeDp: Int) {

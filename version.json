@@ -1,6 +1,6 @@
 {
-  "versionCode": 42,
-  "versionName": "1.4.2",
-  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.4.2/JobAssistant-v1.4.2.apk",
-  "releaseNotes": "1. 各岗位统一先逐项对照完整JD与简历，校验原文引用后再生成招呼语。\n2. 修复同名岗位串联、聊天页误用JD和编辑后旧结果回填。\n3. PDF按页面位置提取，更新后请重新导入原PDF。\n4. 默认提示词移除固定项目示例；保留自定义文风与已有档案。\n5. 正常生成调用模型两次，等待时间和用量增加；缺少依据或校验失败时停止生成。"
+  "versionCode": 43,
+  "versionName": "1.4.3",
+  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.4.3/JobAssistant-v1.4.3.apk",
+  "releaseNotes": "1. 生成报错新增查看详情和一键复制，可直接粘贴反馈。\n2. AI设置集中保留最近一次生成错误，支持查看、复制和清除。\n3. 错误报告包含失败阶段、耗时、模型、HTTP状态、请求ID、接口错误摘要和调用栈。\n4. 保存与复制前脱敏，不记录完整简历、JD、聊天或模型原文；沿用原签名支持覆盖安装。"
 }

@@ -765,7 +765,7 @@ class FloatingService : Service() {
                         }
                     }
                     val errorView = TextView(this@FloatingService).apply {
-                        text = "生成遇到问题：${err.localizedMessage ?: "未知错误"}\n\n建议检查网络连接、API Key或在上方重新修改岗位JD。"
+                        text = "生成遇到问题：${err.localizedMessage ?: "未知错误"}\n\n可复制下方错误详情用于排查，也可在「AI 设置」查看最近一次生成错误。"
                         setTextColor(Color.parseColor("#DC2626"))
                         textSize = 13f
                         setLineSpacing(3f, 1.15f)
@@ -789,6 +789,36 @@ class FloatingService : Service() {
                         }
                     }
                     errorCard.addView(errorView)
+                    val report = (err as? GenerationFailure)?.report.orEmpty()
+                    if (report.isNotBlank()) {
+                        val details = TextView(this@FloatingService).apply {
+                            text = report
+                            textSize = 11f
+                            setTextColor(Color.parseColor("#475569"))
+                            setTextIsSelectable(true)
+                            visibility = View.GONE
+                            setPadding(0, (10 * density).toInt(), 0, (10 * density).toInt())
+                        }
+                        errorCard.addView(Button(this@FloatingService).apply {
+                            text = "复制错误详情"
+                            isAllCaps = false
+                            setOnClickListener {
+                                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("求职助手错误详情", report))
+                                Toast.makeText(this@FloatingService, "错误详情已复制，可直接粘贴反馈", Toast.LENGTH_SHORT).show()
+                            }
+                        })
+                        errorCard.addView(Button(this@FloatingService).apply {
+                            text = "查看错误详情"
+                            isAllCaps = false
+                            setOnClickListener {
+                                val expanded = details.visibility == View.VISIBLE
+                                details.visibility = if (expanded) View.GONE else View.VISIBLE
+                                text = if (expanded) "查看错误详情" else "收起错误详情"
+                            }
+                        })
+                        errorCard.addView(details)
+                    }
                     errorCard.addView(retryBtn)
                     container.addView(errorCard)
                 }

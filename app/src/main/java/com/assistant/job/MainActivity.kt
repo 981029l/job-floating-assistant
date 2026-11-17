@@ -2530,7 +2530,14 @@ fun SettingsTab(
     var isSimulatingOnline by remember { mutableStateOf(false) }
     var simulatedGreetings by remember { mutableStateOf<List<GreetingOption>>(emptyList()) }
     var simError by remember { mutableStateOf("") }
+    var simErrorReport by remember { mutableStateOf("") }
+    var lastGenerationError by remember { mutableStateOf(StorageManager.getGenerationError(context)) }
     var simIdx by remember { mutableStateOf(0) }
+
+    DisposableEffect(context) {
+        val stopObserving = StorageManager.observeGenerationError(context) { lastGenerationError = it }
+        onDispose { stopObserving() }
+    }
 
     var isSavedTemporarily by remember { mutableStateOf(false) }
 
@@ -2549,6 +2556,7 @@ fun SettingsTab(
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        GenerationErrorCard(lastGenerationError) { StorageManager.saveGenerationError(context, "") }
         // 1. API 接口配置卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -2946,6 +2954,7 @@ fun SettingsTab(
                     // 真实在线调用生成
                     isSimulatingOnline = true
                     simError = ""
+                    simErrorReport = ""
                     scope.launch {
                         val testJd = "岗位职责：负责核心业务微前端架构与高并发页面研发，要求精通前端工程化、TypeScript与性能调优，具有大规模落地实践经验。"
                         val res = DeepSeekClient.generateGreetings(context, testJd)
@@ -2955,6 +2964,7 @@ fun SettingsTab(
                             simIdx = 0
                         }.onFailure { err ->
                             simError = err.message ?: "生成失败"
+                            simErrorReport = (err as? GenerationFailure)?.report.orEmpty()
                         }
                     }
                 },
@@ -3191,7 +3201,15 @@ fun SettingsTab(
                                 .border(1.dp, Color(0xFFFECACA), RoundedCornerShape(12.dp))
                                 .padding(12.dp)
                         ) {
-                            Text("调用失败: $simError", fontSize = 11.sp, color = Color(0xFFB91C1C))
+                            Column {
+                                Text("调用失败: $simError", fontSize = 11.sp, color = Color(0xFFB91C1C))
+                                if (simErrorReport.isNotBlank()) {
+                                    TextButton(onClick = {
+                                        clipboardManager.setText(AnnotatedString(simErrorReport))
+                                        Toast.makeText(context, "错误详情已复制", Toast.LENGTH_SHORT).show()
+                                    }) { Text("复制错误详情") }
+                                }
+                            }
                         }
                     } else if (simulatedGreetings.isNotEmpty()) {
                         val currentOpt = simulatedGreetings[simIdx % simulatedGreetings.size]

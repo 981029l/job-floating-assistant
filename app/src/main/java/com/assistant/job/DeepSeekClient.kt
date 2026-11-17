@@ -1,6 +1,7 @@
 package com.assistant.job
 
 import android.content.Context
+import android.os.Build
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -235,49 +236,46 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
         elapsedTime: String = "",
         onStage: suspend (GreetingStage) -> Unit = {}
     ): Result<List<GreetingOption>> = withContext(Dispatchers.IO) {
+        val apiKey = StorageManager.getApiKey(context)
+        val endpoint = StorageManager.getBaseUrl(context).trimEnd('/') + "/chat/completions"
+        val input = GreetingInput(
+            StorageManager.getModel(context), StorageManager.getPromptForMode(context, mode), mode,
+            jdText, StorageManager.getResume(context), chatHistory, latestMessage, screenText, resumeStatus, elapsedTime)
+        val version = runCatching {
+            @Suppress("DEPRECATION")
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            @Suppress("DEPRECATION")
+            "${info.versionName} (${info.versionCode})"
+        }.getOrDefault("未知")
+        val diagnostics = GenerationDiagnostics(input, endpoint, version,
+            "Android ${Build.VERSION.RELEASE} / API ${Build.VERSION.SDK_INT} / ${Build.MANUFACTURER} ${Build.MODEL}",
+            "连接=${client.connectTimeoutMillis} ms；读取=${client.readTimeoutMillis} ms；写入=${client.writeTimeoutMillis} ms", apiKey)
         try {
-            val apiKey = StorageManager.getApiKey(context)
-            if (apiKey.isBlank()) {
-                return@withContext Result.failure(Exception("请先填写并保存 API Key"))
-            }
-
-            val baseUrl = StorageManager.getBaseUrl(context).trimEnd('/')
-            val endpoint = "$baseUrl/chat/completions"
-            val model = StorageManager.getModel(context)
-            val basePrompt = StorageManager.getPromptForMode(context, mode)
-            val resume = StorageManager.getResume(context)
-
-            val input = GreetingInput(
-                model = model,
-                prompt = basePrompt,
-                mode = mode,
-                jdText = jdText,
-                resume = resume,
-                chatHistory = chatHistory,
-                latestMessage = latestMessage,
-                screenText = screenText,
-                resumeStatus = resumeStatus,
-                elapsedTime = elapsedTime
-            )
+            require(apiKey.isNotBlank()) { "请先填写并保存 API Key" }
 
             val content = GreetingPipeline.generate(input,
-                complete = { body -> completeGreetingRequest(endpoint, apiKey, body) },
-                onStage = onStage)
+                complete = { body -> completeGreetingRequest(endpoint, apiKey, body, diagnostics) },
+                onStage = onStage, diagnostics = diagnostics)
 
+            diagnostics.operation("整理招呼语卡片")
             val options = parseOptions(content, mode)
             Result.success(options)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Result.failure(e)
+            val failure = diagnostics.failure(e)
+            StorageManager.saveGenerationError(context, failure.report)
+            Result.failure(failure)
         }
     }
 
-    internal suspend fun completeGreetingRequest(endpoint: String, apiKey: String, body: JSONObject): String =
+    internal suspend fun completeGreetingRequest(endpoint: String, apiKey: String, body: JSONObject, diagnostics: GenerationDiagnostics? = null): String =
         suspendCancellableCoroutine { continuation ->
+            val payload = body.toString()
+            diagnostics?.request(payload.toByteArray(Charsets.UTF_8).size)
             val request = Request.Builder().url(endpoint)
                 .addHeader("Authorization", "Bearer $apiKey")
-                .post(body.toString().toRequestBody(JSON_MEDIA_TYPE)).build()
+                .post(payload.toRequestBody(JSON_MEDIA_TYPE)).build()
             val call = client.newCall(request)
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {
@@ -288,7 +286,9 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
                 override fun onResponse(call: Call, response: Response) {
                     try {
                         val content = response.use {
+                            diagnostics?.headers(it.code, it.header("x-request-id") ?: it.header("request-id") ?: it.header("cf-ray"), it.header("Content-Type"))
                             val responseBody = it.body?.string().orEmpty()
+                            diagnostics?.response(responseBody)
                             check(it.isSuccessful) { "API 响应失败 (${it.code})，请检查接口配置或稍后重试" }
                             val choice = JSONObject(responseBody).getJSONArray("choices").getJSONObject(0)
                             check(choice.optString("finish_reason") != "length") { "模型输出被截断，请重试或更换支持更长输出的模型" }

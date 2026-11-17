@@ -39,13 +39,13 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.2.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.3.apk
 
       - name: 校验 APK 版本与签名
         run: |
           BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0"
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.2.apk
-          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.2.apk > apk-badging.txt
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.3.apk
+          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.3.apk > apk-badging.txt
           python3 - <<'PY'
           import json, pathlib, re
           version = json.loads(pathlib.Path('version.json').read_text())
@@ -59,7 +59,7 @@ jobs:
           print(badging.splitlines()[0])
           PY
           cd release_apk
-          sha256sum JobAssistant-v1.4.2.apk > SHA256SUMS.txt
+          sha256sum JobAssistant-v1.4.3.apk > SHA256SUMS.txt
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -80,18 +80,19 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.4.2
+          tag_name: v1.4.3
           target_commitish: ${{ github.sha }}
-          name: "AI求职助手 v1.4.2 · 岗位逐项匹配与两阶段生成"
+          name: "AI求职助手 v1.4.3 · 可复制的错误诊断报告"
           body: |
-            每次根据当前公司的完整 JD 与完整简历逐项匹配，检查段落覆盖和原文依据后再生成招呼语。
+            生成失败时可展开详情并一键复制，便于直接反馈定位问题。
 
-            - 统一两阶段流程适用于各岗位及六种沟通场景，自定义提示词不能跳过匹配。
-            - 修复同名岗位串联、聊天内容混入 JD、修改 JD 后旧结果回填。
-            - PDF 按页面位置排序提取，避免项目标题与正文错位；升级后请重新导入原 PDF。
-            - 保留原签名，可覆盖安装并保留现有配置与档案。
+            - 悬浮窗提供「查看错误详情」「复制错误详情」。
+            - AI 设置集中保留最近一次生成错误，支持查看、复制与清除，重启后仍可读取。
+            - 记录失败阶段、实际耗时、超时配置、模型、HTTP 状态、请求 ID、接口错误摘要及异常链。
+            - 敏感信息脱敏；不记录完整 JD、简历、聊天、提示词或模型响应正文，不自动上传诊断报告。
+            - 沿用原签名，可覆盖安装并保留档案与配置。
 
-            正常生成调用模型两次，等待时间和 Token 用量会增加。匹配格式或引用校验失败时停止生成，可手动重试。程序校验原文覆盖及引用存在性，最终语义仍需核对。
+            旧截图中的 timeout 无法恢复详细原因；新版会在下一次生成失败时记录报告。
           files: release_apk/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
