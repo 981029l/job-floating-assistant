@@ -1,15 +1,23 @@
 package com.assistant.job
 
 import android.content.Context
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 object DeepSeekClient {
 
@@ -224,7 +232,8 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
         latestMessage: String = "",
         screenText: String = "",
         resumeStatus: String = "",
-        elapsedTime: String = ""
+        elapsedTime: String = "",
+        onStage: suspend (GreetingStage) -> Unit = {}
     ): Result<List<GreetingOption>> = withContext(Dispatchers.IO) {
         try {
             val apiKey = StorageManager.getApiKey(context)
@@ -238,80 +247,62 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
             val basePrompt = StorageManager.getPromptForMode(context, mode)
             val resume = StorageManager.getResume(context)
 
-            val messagesArray = JSONArray().apply {
-                if (basePrompt.contains("{{jdText}}")) {
-                    val promptContent = basePrompt
-                        .replace("{{jdText}}", jdText.ifBlank { "（暂未识别到详细岗位JD，请基于通用岗位匹配度生成）" })
-                        .replace("{{resume}}", resume.ifBlank { "（未录入完整简历）" })
-                        .replace("{{chatHistory}}", chatHistory.ifBlank { "（此前双方已有初步沟通记录）" })
-                        .replace("{{latestMessage}}", latestMessage.ifBlank { "（对方已作出回复，请结合上下文推进面试转化）" })
-                        .replace("{{screenText}}", screenText.ifBlank { "（当前屏幕聊天窗口内容）" })
-                        .replace("{{resumeStatus}}", resumeStatus.ifBlank { "候选人已发送在线/附件简历" })
-                        .replace("{{elapsedTime}}", elapsedTime.ifBlank { "数小时前或未标注时间" })
-                    put(JSONObject().apply {
-                        put("role", "user")
-                        put("content", promptContent)
-                    })
-                } else {
-                    put(JSONObject().apply {
-                        put("role", "system")
-                        put("content", basePrompt)
-                    })
-                    val userPromptContent = """
-请仔细分析以下【目标岗位 JD】与【候选人简历储备】，严格遵循系统提示中的双轨判定与输出规范，生成针对性的破冰打招呼语：
+            val input = GreetingInput(
+                model = model,
+                prompt = basePrompt,
+                mode = mode,
+                jdText = jdText,
+                resume = resume,
+                chatHistory = chatHistory,
+                latestMessage = latestMessage,
+                screenText = screenText,
+                resumeStatus = resumeStatus,
+                elapsedTime = elapsedTime
+            )
 
-【目标岗位 JD】：
-${jdText.ifBlank { "（通用技术开发岗位要求，请基于通用技术能力与架构实战匹配）" }}
+            val content = GreetingPipeline.generate(input,
+                complete = { body -> completeGreetingRequest(endpoint, apiKey, body) },
+                onStage = onStage)
 
-【候选人简历储备】：
-${resume.ifBlank { "（未录入完整简历）" }}
-""".trimIndent()
-                    put(JSONObject().apply {
-                        put("role", "user")
-                        put("content", userPromptContent)
-                    })
-                }
-            }
-
-            val requestBodyJson = JSONObject().apply {
-                put("model", model)
-                put("messages", messagesArray)
-                put("temperature", 0.7)
-            }
-
-            val request = Request.Builder()
-                .url(endpoint)
-                .addHeader("Authorization", "Bearer $apiKey")
-                .addHeader("Content-Type", "application/json")
-                .post(requestBodyJson.toString().toRequestBody(JSON_MEDIA_TYPE))
-                .build()
-
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string() ?: ""
-
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception("API 响应失败 (${response.code}): $responseBody"))
-            }
-
-            val responseJson = JSONObject(responseBody)
-            val choices = responseJson.optJSONArray("choices")
-            if (choices == null || choices.length() == 0) {
-                return@withContext Result.failure(Exception("AI 模型未返回有效内容: $responseBody"))
-            }
-
-            val content = choices.getJSONObject(0)
-                .getJSONObject("message")
-                .getString("content")
-                .trim()
-
-            val options = parseOptions(content, mode, jdText)
+            val options = parseOptions(content, mode)
             Result.success(options)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    private fun parseOptions(raw: String, mode: GenerationMode = GenerationMode.FIRST_ICEBREAK, jdText: String = ""): List<GreetingOption> {
+    internal suspend fun completeGreetingRequest(endpoint: String, apiKey: String, body: JSONObject): String =
+        suspendCancellableCoroutine { continuation ->
+            val request = Request.Builder().url(endpoint)
+                .addHeader("Authorization", "Bearer $apiKey")
+                .post(body.toString().toRequestBody(JSON_MEDIA_TYPE)).build()
+            val call = client.newCall(request)
+            continuation.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    continuation.resumeWithException(e)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    try {
+                        val content = response.use {
+                            val responseBody = it.body?.string().orEmpty()
+                            check(it.isSuccessful) { "API 响应失败 (${it.code})，请检查接口配置或稍后重试" }
+                            val choice = JSONObject(responseBody).getJSONArray("choices").getJSONObject(0)
+                            check(choice.optString("finish_reason") != "length") { "模型输出被截断，请重试或更换支持更长输出的模型" }
+                            choice.getJSONObject("message").getString("content").trim()
+                        }
+                        continuation.resume(content)
+                    } catch (e: Exception) {
+                        continuation.resumeWithException(e)
+                    }
+                }
+            })
+        }
+
+    private fun parseOptions(raw: String, mode: GenerationMode = GenerationMode.FIRST_ICEBREAK): List<GreetingOption> {
         val list = mutableListOf<GreetingOption>()
         var cleaned = raw.trim().replace("\r\n", "\n")
         if (cleaned.startsWith("```") && cleaned.endsWith("```")) {
@@ -371,7 +362,7 @@ ${resume.ifBlank { "（未录入完整简历）" }}
             }
         }
         val (title1, title2) = when (mode) {
-            GenerationMode.FIRST_ICEBREAK -> Pair("核心职责即战力型", "加分亮点突围型")
+            GenerationMode.FIRST_ICEBREAK -> Pair("核心职责匹配型", "相关经历补充型")
             GenerationMode.READ_UNREPLIED -> Pair("技术攻坚深化型", "业务成效赋能型")
             GenerationMode.UNREAD_NUDGE -> Pair("岗位价值补充型", "自然轻量触达型")
             GenerationMode.IN_DEPTH_CHAT -> Pair("专业答复型", "面试推进型")
@@ -391,7 +382,7 @@ ${resume.ifBlank { "（未录入完整简历）" }}
             val part2 = cleaned.substring(m2.range.last + 1).trim()
             if (part1.isNotBlank()) list.add(GreetingOption(title1, part1))
             if (part2.isNotBlank()) list.add(GreetingOption(title2, part2))
-            return list.map { it.copy(text = sanitizeGreetingText(it.text, mode, jdText)) }
+            return list.map { it.copy(text = sanitizeGreetingText(it.text, mode)) }
         }
 
         // 2. 次级单行行内切分
@@ -405,7 +396,7 @@ ${resume.ifBlank { "（未录入完整简历）" }}
             val part2 = cleaned.substring(im2.range.last + 1).trim()
             if (part1.isNotBlank()) list.add(GreetingOption(title1, part1))
             if (part2.isNotBlank()) list.add(GreetingOption(title2, part2))
-            return list.map { it.copy(text = sanitizeGreetingText(it.text, mode, jdText)) }
+            return list.map { it.copy(text = sanitizeGreetingText(it.text, mode)) }
         }
 
         // 3. 兜底策略：若大模型以双换行分段输出了两段具有一定长度的候选内容
@@ -413,66 +404,20 @@ ${resume.ifBlank { "（未录入完整简历）" }}
         if (paragraphs.size >= 2) {
             list.add(GreetingOption(title1, paragraphs[0]))
             list.add(GreetingOption(title2, paragraphs[1]))
-            return list.map { it.copy(text = sanitizeGreetingText(it.text, mode, jdText)) }
+            return list.map { it.copy(text = sanitizeGreetingText(it.text, mode)) }
         }
 
         val fallbackTitle = if (mode == GenerationMode.IN_DEPTH_CHAT) "面试转化回复" else "精选破冰语"
         list.add(GreetingOption(fallbackTitle, cleaned))
-        return list.map { it.copy(text = sanitizeGreetingText(it.text, mode, jdText)) }
+        return list.map { it.copy(text = sanitizeGreetingText(it.text, mode)) }
     }
 
-    private fun sanitizeGreetingText(text: String, mode: GenerationMode, jdText: String = ""): String {
+    private fun sanitizeGreetingText(text: String, mode: GenerationMode): String {
         var result = text.trim()
         if (result.isBlank()) return result
 
         if (result.startsWith("**") && result.endsWith("**") && result.length > 4) {
             result = result.substring(2, result.length - 2).trim()
-        }
-
-        // 彻底根除公文腔、生硬书面化字眼
-        result = result
-            .replace("贵司高级", "看到高级")
-            .replace("贵司", "看到")
-            .replace("贵公司", "看到")
-            .replace("尊敬的招聘负责人", "您好")
-            .replace("尊敬的HR", "您好")
-            .replace("尊敬的面试官", "您好")
-            .replace("看到看到", "看到")
-
-        // 物理防护线：若目标 JD 完全没有提及 AI/大模型相关内容，而生成话术第一句发生幻觉
-        val jdHasAi = jdText.contains("AI", ignoreCase = true) || 
-                      jdText.contains("大模型") || 
-                      jdText.contains("人工智能") || 
-                      jdText.contains("智能体") || 
-                      jdText.contains("Agent", ignoreCase = true)
-
-        if (!jdHasAi && mode == GenerationMode.FIRST_ICEBREAK) {
-            result = result
-                .replace("企业级AI知识库与多端前端架构开发是我主场", "大型企业级系统与多端前端架构开发是我的核心方向")
-                .replace("企业级AI知识库与多端前端架构", "大型系统与多端前端架构")
-                .replace("企业级AI知识库", "大型企业级系统")
-                .replace("AI知识库与直播平台", "企业级系统与高并发平台")
-                .replace("AI知识库", "企业级业务系统")
-                .replace("具备SSE流式交互", "具备高性能交互设计")
-                .replace("是我主场", "是我的核心方向")
-                .replace("多端产品与 AI 能力的前端落地", "多端产品与交互架构的前端落地")
-                .replace("多端产品与 AI 能力的落地", "多端产品与交互架构的落地")
-                .replace("多端产品与 AI 能力", "多端产品与交互架构")
-                .replace("AI 能力的前端落地", "核心业务的前端落地")
-                .replace("AI 能力的落地", "核心业务的落地")
-                .replace("AI 业务的前端落地", "核心业务的前端落地")
-                .replace("做 AI 相关", "做核心业务")
-        }
-
-        // 物理防护线 2：拦截咨询顾问式反问卡点、盘问瓶颈与虚伪奉承套话
-        if (mode == GenerationMode.FIRST_ICEBREAK) {
-            result = result
-                .replace(Regex("(?:方便的话)?想听听你们现在的(?:性能)?卡点[。！？?]*"), "期待能和您具体交流。")
-                .replace(Regex("(?:不知)?(?:目前|现在)?遇到(?:了)?什么(?:技术)?(?:卡点|瓶颈|挑战)[。！？?]*"), "希望能和您进一步沟通。")
-                .replace(Regex("想了解(?:下)?你们(?:目前)?的(?:性能)?卡点[。！？?]*"), "期待和您深入沟通。")
-                .replace("在数据密集的视图渲染，并且在交互流畅、易维护易扩展上有很高的标准", "主要负责后台系统与多端交互落地")
-                .replace("并且在交互流畅、易维护易扩展上有很高的标准", "同时注重交互体验与规范交付")
-                .replace("有很高的标准", "有清晰明确的要求")
         }
 
         // 首次破冰若首句缺失礼貌尊称，自动补全「您好，」

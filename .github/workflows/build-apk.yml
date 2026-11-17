@@ -33,35 +33,66 @@ jobs:
             chmod +x gradlew
           fi
 
-      - name: 执行编译 (assembleRelease)
-        run: gradle assembleRelease --stacktrace
+      - name: 验证岗位匹配并编译 APK
+        run: gradle testDebugUnitTest assembleRelease --stacktrace
 
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.1.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.2.apk
+
+      - name: 校验 APK 版本与签名
+        run: |
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.2.apk
+          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.2.apk > apk-badging.txt
+          python3 - <<'PY'
+          import json, pathlib, re
+          version = json.loads(pathlib.Path('version.json').read_text())
+          gradle = pathlib.Path('app/build.gradle.kts').read_text()
+          badging = pathlib.Path('apk-badging.txt').read_text()
+          assert re.search(r'versionCode\s*=\s*' + str(version['versionCode']) + r'\b', gradle)
+          assert 'versionName = "' + version['versionName'] + '"' in gradle
+          assert "name='com.assistant.job'" in badging
+          assert "versionCode='" + str(version['versionCode']) + "'" in badging
+          assert "versionName='" + version['versionName'] + "'" in badging
+          print(badging.splitlines()[0])
+          PY
+          cd release_apk
+          sha256sum JobAssistant-v1.4.2.apk > SHA256SUMS.txt
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
         with:
           name: JobAssistant-Release-APK
-          path: release_apk/*.apk
+          path: release_apk/*
           retention-days: 30
+
+      - name: 保存单元测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Unit-Test-Reports
+          path: app/build/reports/tests/testDebugUnitTest/
+          if-no-files-found: ignore
 
       - name: 发布至 GitHub Releases
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.4.1
-          name: "AI求职助手 v1.4.1 (JD双轨判定/轻装上阵/Few-Shot正反范例/解除自定义拦截)"
+          tag_name: v1.4.2
+          target_commitish: ${{ github.sha }}
+          name: "AI求职助手 v1.4.2 · 岗位逐项匹配与两阶段生成"
           body: |
-            AI 求职助手 v1.4.1 重大更新说明：
-            1. 彻底终结法典补丁地狱：拔除过载的微观数字枷锁（字数/逗号数/权重），轻装上阵释放模型语义推理 Attention；
-            2. JD 属性双轨判定：区分具象业务型 JD 与通用架构型 JD，彻底根治通用岗位反客为主强推 AI 知识库的自嗨 Bug；
-            3. 真实场景 Few-Shot 正反少样本驱动：内置真实岗位正反案例对照示范，语义对齐率大幅跃升；
-            4. 解除自定义提示词静默拦截：修复旧版硬编码判定导致自定义 Prompt 被强制回退的底层缺陷，增强非 AI 岗位物理防护安全网；
-            5. 正式产物 APK 名：JobAssistant-v1.4.1.apk（继承持久签名，无缝覆盖升级）。
-          files: release_apk/JobAssistant-v1.4.1.apk
+            每次根据当前公司的完整 JD 与完整简历逐项匹配，检查段落覆盖和原文依据后再生成招呼语。
+
+            - 统一两阶段流程适用于各岗位及六种沟通场景，自定义提示词不能跳过匹配。
+            - 修复同名岗位串联、聊天内容混入 JD、修改 JD 后旧结果回填。
+            - PDF 按页面位置排序提取，避免项目标题与正文错位；升级后请重新导入原 PDF。
+            - 保留原签名，可覆盖安装并保留现有配置与档案。
+
+            正常生成调用模型两次，等待时间和 Token 用量会增加。匹配格式或引用校验失败时停止生成，可手动重试。程序校验原文覆盖及引用存在性，最终语义仍需核对。
+          files: release_apk/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

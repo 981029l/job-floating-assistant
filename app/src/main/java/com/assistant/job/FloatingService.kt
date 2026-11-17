@@ -35,6 +35,8 @@ import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -177,11 +179,10 @@ class FloatingService : Service() {
     }
 
     private fun onFloatingBallClicked() {
-        val jdText = JobAccessibilityService.captureCurrentScreenText()
-        showGenerationDialog(jdText)
+        showGenerationDialog()
     }
 
-    private fun showGenerationDialog(initialJd: String) {
+    private fun showGenerationDialog() {
         if (dialogOverlayView != null) {
             dismissDialog()
         }
@@ -193,7 +194,7 @@ class FloatingService : Service() {
         var currentScreenText = scene.screenText
         var currentResumeStatus = scene.resumeStatus
         var currentElapsedTime = scene.elapsedTime
-        var currentJd = if (initialJd.length >= 20) initialJd else if (scene.jdText.length >= 20) scene.jdText else initialJd
+        var currentJd = scene.jdText
 
         val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -353,7 +354,7 @@ class FloatingService : Service() {
         }
 
         val jdStatusBadge = TextView(this).apply {
-            val count = initialJd.length
+            val count = currentJd.length
             val matchedTitle = JobAccessibilityService.lastMatchedJobTitle
             if (matchedTitle.isNotBlank()) {
                 val shortTitle = if (matchedTitle.length > 7) matchedTitle.take(7) + ".." else matchedTitle
@@ -395,7 +396,7 @@ class FloatingService : Service() {
         }
 
         val toggleBtn = TextView(this).apply {
-            text = if (initialJd.length >= 20) "校对/修改" else "收起"
+            text = if (currentJd.length >= 20) "校对/修改" else "收起"
             textSize = 11.5f
             setTextColor(Color.parseColor("#2563EB"))
             paint.isFakeBoldText = true
@@ -414,8 +415,8 @@ class FloatingService : Service() {
 
         // 2. 折叠状态下的单行预览摘要
         val previewSnippet = TextView(this).apply {
-            text = if (initialJd.isNotBlank()) {
-                "预览: " + initialJd.replace("\n", " ").trim()
+            text = if (currentJd.isNotBlank()) {
+                "预览: " + currentJd.replace("\n", " ").trim()
             } else {
                 "（暂无屏幕文本，点击右侧展开可直接粘贴岗位要求）"
             }
@@ -424,7 +425,7 @@ class FloatingService : Service() {
             maxLines = 1
             ellipsize = TextUtils.TruncateAt.END
             setPadding(0, (6 * density).toInt(), 0, 0)
-            visibility = if (initialJd.length >= 20) View.VISIBLE else View.GONE
+            visibility = if (currentJd.length >= 20) View.VISIBLE else View.GONE
         }
         jdCard.addView(previewSnippet)
 
@@ -432,11 +433,11 @@ class FloatingService : Service() {
         val jdEditSection = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, (8 * density).toInt(), 0, 0)
-            visibility = if (initialJd.length >= 20) View.GONE else View.VISIBLE
+            visibility = if (currentJd.length >= 20) View.GONE else View.VISIBLE
         }
 
         val jdEditText = EditText(this).apply {
-            setText(initialJd)
+            setText(currentJd)
             hint = "若自动识别不准，可在此手动修改，或点击下方【粘贴剪贴板】..."
             textSize = 12f
             setTextColor(Color.parseColor("#1E293B"))
@@ -501,8 +502,14 @@ class FloatingService : Service() {
                 rightMargin = (5 * density).toInt()
             }
             setOnClickListener {
-                val latestJd = JobAccessibilityService.captureCurrentScreenText()
+                val refreshedScene = JobAccessibilityService.inspectCurrentScene()
+                val latestJd = refreshedScene.jdText
                 if (latestJd.length >= 20) {
+                    currentChatHistory = refreshedScene.chatHistory
+                    currentLatestMsg = refreshedScene.latestMessage
+                    currentScreenText = refreshedScene.screenText
+                    currentResumeStatus = refreshedScene.resumeStatus
+                    currentElapsedTime = refreshedScene.elapsedTime
                     jdEditText.setText(latestJd)
                     jdEditText.setSelection(latestJd.length)
                     previewSnippet.text = "预览: " + latestJd.replace("\n", " ").trim()
@@ -554,12 +561,28 @@ class FloatingService : Service() {
 
         rootLayout.addView(jdCard)
 
+        val contentContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, (6 * density).toInt(), 0, (6 * density).toInt())
+        }
+
         // 监听编辑框字符数变化，动态刷新徽章
         jdEditText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
-                val len = s?.length ?: 0
+                val updatedJd = s?.toString()?.trim() ?: ""
+                if (updatedJd != currentJd) {
+                    currentGenerationJob?.cancel()
+                    contentContainer.removeAllViews()
+                    contentContainer.addView(TextView(this@FloatingService).apply {
+                        text = "岗位内容已修改，请点击「按此JD重新生成」重新匹配。"
+                        setTextColor(Color.parseColor("#64748B"))
+                        textSize = 13f
+                    })
+                }
+                currentJd = updatedJd
+                val len = currentJd.length
                 if (len >= 20) {
                     jdStatusBadge.text = "就绪 · ${len}字"
                     jdStatusBadge.setTextColor(Color.parseColor("#059669"))
@@ -603,10 +626,6 @@ class FloatingService : Service() {
                 0,
                 1f
             )
-        }
-        val contentContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, (6 * density).toInt(), 0, (6 * density).toInt())
         }
         scrollView.addView(contentContainer)
 
@@ -676,13 +695,13 @@ class FloatingService : Service() {
             return
         }
 
-        if (currentJd.length >= 15 || currentMode != GenerationMode.FIRST_ICEBREAK) {
+        if (currentJd.length >= 15) {
             triggerAiGeneration(contentContainer, currentJd, currentMode, currentChatHistory, currentLatestMsg, currentScreenText, currentResumeStatus, currentElapsedTime)
         } else {
             // 如果初次识别没有达到 20 字，在下方展示友好引导
             contentContainer.removeAllViews()
             val promptTip = TextView(this).apply {
-                text = "屏幕文字未完全识别\n请在上方卡片中检查并点击【粘贴剪贴板】，然后点击【按此JD重新生成】。"
+                text = "未确认当前岗位 JD\n请先打开岗位详情页读取；聊天页需匹配到相同公司和职位。也可展开上方卡片粘贴完整 JD 后生成。"
                 setTextColor(Color.parseColor("#64748B"))
                 textSize = 13f
                 gravity = Gravity.CENTER
@@ -710,17 +729,8 @@ class FloatingService : Service() {
         val progressBar = ProgressBar(this).apply {
             isIndeterminate = true
         }
-        val currentModel = StorageManager.getModel(this)
-        val modeActionDesc = when (mode) {
-            GenerationMode.FIRST_ICEBREAK -> "深度解析岗位要求与简历匹配点"
-            GenerationMode.READ_UNREPLIED -> "挖掘深水攻坚亮点，生成已读二度跟进"
-            GenerationMode.UNREAD_NUDGE -> "提炼高密度通知抓手，生成未读触达"
-            GenerationMode.IN_DEPTH_CHAT -> "分析对方问题与关注点，生成面试转化回复"
-            GenerationMode.RESUME_FOLLOW_UP -> "研判简历查收状态，生成投后高转化回复"
-            GenerationMode.TECH_EVALUATION -> "针对转交技术评估场景，生成得体推进回复"
-        }
         val loadingText = TextView(this).apply {
-            text = "正在${modeActionDesc}...\n（调用 $currentModel 极速生成中）"
+            text = GreetingStage.MATCHING.description
             setTextColor(Color.parseColor("#334155"))
             textSize = 13f
             gravity = Gravity.CENTER
@@ -731,7 +741,12 @@ class FloatingService : Service() {
         container.addView(loadingText)
 
         currentGenerationJob = serviceScope.launch {
-            val result = DeepSeekClient.generateGreetings(this@FloatingService, jdText, mode, chatHistory, latestMessage, screenText, resumeStatus, elapsedTime)
+            val result = DeepSeekClient.generateGreetings(this@FloatingService, jdText, mode, chatHistory, latestMessage, screenText, resumeStatus, elapsedTime) { stage ->
+                withContext(Dispatchers.Main) {
+                    loadingText.text = stage.description
+                }
+            }
+            ensureActive()
             withContext(Dispatchers.Main) {
                 container.removeAllViews()
                 result.onSuccess { options ->
@@ -905,6 +920,7 @@ class FloatingService : Service() {
     }
 
     private fun dismissDialog() {
+        currentGenerationJob?.cancel()
         dialogOverlayView?.let {
             try {
                 windowManager.removeView(it)
@@ -923,5 +939,6 @@ class FloatingService : Service() {
             floatingBallView = null
         }
         dismissDialog()
+        serviceScope.cancel()
     }
 }

@@ -1,6 +1,6 @@
 {
-  "versionCode": 41,
-  "versionName": "1.4.1",
-  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.4.1/JobAssistant-v1.4.1.apk",
-  "releaseNotes": "1. 彻底终结法典补丁地狱：拔除过载的微观数字枷锁（字数/逗号数/权重），轻装上阵释放模型语义推理 Attention；\n2. JD 属性双轨判定：区分具象业务型 JD 与通用架构型 JD，彻底根治通用岗位反客为主强推 AI 知识库的自嗨 Bug；\n3. 真实场景 Few-Shot 正反少样本驱动：内置真实岗位正反案例对照示范，语义对齐率大幅跃升；\n4. 解除自定义提示词静默拦截：修复旧版硬编码判定导致自定义 Prompt 被强制回退的底层缺陷，增强非 AI 岗位物理防护安全网。"
+  "versionCode": 42,
+  "versionName": "1.4.2",
+  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.4.2/JobAssistant-v1.4.2.apk",
+  "releaseNotes": "1. 各岗位统一先逐项对照完整JD与简历，校验原文引用后再生成招呼语。\n2. 修复同名岗位串联、聊天页误用JD和编辑后旧结果回填。\n3. PDF按页面位置提取，更新后请重新导入原PDF。\n4. 默认提示词移除固定项目示例；保留自定义文风与已有档案。\n5. 正常生成调用模型两次，等待时间和用量增加；缺少依据或校验失败时停止生成。"
 }

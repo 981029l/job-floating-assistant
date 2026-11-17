@@ -37,11 +37,11 @@ object ResumeParser {
     private fun parsePdf(context: Context, inputStream: InputStream): String {
         return try {
             PDFBoxResourceLoader.init(context)
-            val document = PDDocument.load(inputStream)
-            val stripper = PDFTextStripper()
-            val text = stripper.getText(document).trim()
-            document.close()
-            text
+            inputStream.use { stream ->
+                PDDocument.load(stream).use { document ->
+                    PDFTextStripper().apply { sortByPosition = true }.getText(document).trim()
+                }
+            }
         } catch (e: Exception) {
             throw Exception("PDF 解析失败: ${e.message}")
         }
