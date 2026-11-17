@@ -28,6 +28,12 @@ object DeepSeekClient {
         .writeTimeout(20, TimeUnit.SECONDS)
         .build()
 
+    private val generationClient = client.newBuilder()
+        .readTimeout(120, TimeUnit.SECONDS)
+        .callTimeout(300, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(false)
+        .build()
+
     private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
     suspend fun fetchModelList(context: Context): Result<List<String>> = withContext(Dispatchers.IO) {
@@ -249,7 +255,7 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
         }.getOrDefault("未知")
         val diagnostics = GenerationDiagnostics(input, endpoint, version,
             "Android ${Build.VERSION.RELEASE} / API ${Build.VERSION.SDK_INT} / ${Build.MANUFACTURER} ${Build.MODEL}",
-            "连接=${client.connectTimeoutMillis} ms；读取=${client.readTimeoutMillis} ms；写入=${client.writeTimeoutMillis} ms", apiKey)
+            "连接=${generationClient.connectTimeoutMillis} ms；连续无数据=${generationClient.readTimeoutMillis} ms；写入=${generationClient.writeTimeoutMillis} ms；单次请求总时限=${generationClient.callTimeoutMillis} ms", apiKey)
         try {
             require(apiKey.isNotBlank()) { "请先填写并保存 API Key" }
 
@@ -269,14 +275,17 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
         }
     }
 
-    internal suspend fun completeGreetingRequest(endpoint: String, apiKey: String, body: JSONObject, diagnostics: GenerationDiagnostics? = null): String =
+    internal suspend fun completeGreetingRequest(
+        endpoint: String, apiKey: String, body: JSONObject,
+        diagnostics: GenerationDiagnostics? = null, httpClient: OkHttpClient = generationClient
+    ): String =
         suspendCancellableCoroutine { continuation ->
             val payload = body.toString()
             diagnostics?.request(payload.toByteArray(Charsets.UTF_8).size)
             val request = Request.Builder().url(endpoint)
                 .addHeader("Authorization", "Bearer $apiKey")
                 .post(payload.toRequestBody(JSON_MEDIA_TYPE)).build()
-            val call = client.newCall(request)
+            val call = httpClient.newCall(request)
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
@@ -287,12 +296,7 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
                     try {
                         val content = response.use {
                             diagnostics?.headers(it.code, it.header("x-request-id") ?: it.header("request-id") ?: it.header("cf-ray"), it.header("Content-Type"))
-                            val responseBody = it.body?.string().orEmpty()
-                            diagnostics?.response(responseBody)
-                            check(it.isSuccessful) { "API 响应失败 (${it.code})，请检查接口配置或稍后重试" }
-                            val choice = JSONObject(responseBody).getJSONArray("choices").getJSONObject(0)
-                            check(choice.optString("finish_reason") != "length") { "模型输出被截断，请重试或更换支持更长输出的模型" }
-                            choice.getJSONObject("message").getString("content").trim()
+                            GreetingResponseReader.read(it, diagnostics)
                         }
                         continuation.resume(content)
                     } catch (e: Exception) {

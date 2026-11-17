@@ -60,6 +60,29 @@ class GenerationDiagnosticsTest {
         }
     }
 
+    @Test fun streamProgressTimingAndCountersAreResetBetweenRequests() {
+        var now = 0L
+        val trace = diagnostics(clock = { now })
+        trace.request(100)
+        trace.headers(200, "first-stream", "text/event-stream")
+        trace.streamStarted()
+        now = 1_000_000_000L
+        trace.received(256)
+        trace.streamEvent(JSONObject("{\"choices\":[{\"delta\":{\"content\":\"回答\",\"reasoning_content\":\"PRIVATE\"}}]}"))
+        now = 3_000_000_000L
+        val partial = trace.failure(SocketTimeoutException("timeout")).report
+        assertTrue(partial.contains("首批正文等待：1000 ms；距最后收包：2000 ms"))
+        assertTrue(partial.contains("已收响应正文：256 bytes"))
+        assertTrue(partial.contains("事件=1；回答=2 字符；思考=7 字符"))
+        assertFalse(partial.contains("PRIVATE"))
+        trace.request(200)
+        val next = trace.failure(SocketTimeoutException("timeout")).report
+        assertTrue(next.contains("已收响应正文：0 bytes"))
+        assertTrue(next.contains("首批正文等待：未收到"))
+        assertFalse(next.contains("流式统计"))
+        assertFalse(next.contains("first-stream"))
+    }
+
     @Test fun missingMatchCoverageIsReportedAsValidationFailure() = runBlocking {
         val trace = diagnostics()
         try {

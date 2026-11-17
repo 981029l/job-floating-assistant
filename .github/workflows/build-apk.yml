@@ -39,13 +39,13 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.3.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.4.apk
 
       - name: 校验 APK 版本与签名
         run: |
           BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0"
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.3.apk
-          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.3.apk > apk-badging.txt
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.4.apk
+          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.4.apk > apk-badging.txt
           python3 - <<'PY'
           import json, pathlib, re
           version = json.loads(pathlib.Path('version.json').read_text())
@@ -59,7 +59,7 @@ jobs:
           print(badging.splitlines()[0])
           PY
           cd release_apk
-          sha256sum JobAssistant-v1.4.3.apk > SHA256SUMS.txt
+          sha256sum JobAssistant-v1.4.4.apk > SHA256SUMS.txt
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -80,19 +80,19 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.4.3
+          tag_name: v1.4.4
           target_commitish: ${{ github.sha }}
-          name: "AI求职助手 v1.4.3 · 可复制的错误诊断报告"
+          name: "AI求职助手 v1.4.4 · 修复生成正文读取超时"
           body: |
-            生成失败时可展开详情并一键复制，便于直接反馈定位问题。
+            修复收到 HTTP 200 后仍在等待模型正文、触发旧版 45 秒读取超时的问题。
 
-            - 悬浮窗提供「查看错误详情」「复制错误详情」。
-            - AI 设置集中保留最近一次生成错误，支持查看、复制与清除，重启后仍可读取。
-            - 记录失败阶段、实际耗时、超时配置、模型、HTTP 状态、请求 ID、接口错误摘要及异常链。
-            - 敏感信息脱敏；不记录完整 JD、简历、聊天、提示词或模型响应正文，不自动上传诊断报告。
-            - 沿用原签名，可覆盖安装并保留档案与配置。
+            - 两阶段生成改为流式读取，接收保活与增量回答，保留模型原有思考设置。
+            - 生成请求连续无数据超时 120 秒，每阶段总时限 5 分钟；支持取消，不自动重试生成。
+            - 流中断、输出截断或未正常结束时停止，不使用不完整匹配结果；兼容返回普通 JSON 的接口。
+            - 可复制报告新增已收字节、回答/思考字符数、首批正文等待、最后收包时间与流结束状态；不保存思考原文。
+            - 保留完整 JD 与简历逐项对照、覆盖和引用校验；沿用原签名，可覆盖安装。
 
-            旧截图中的 timeout 无法恢复详细原因；新版会在下一次生成失败时记录报告。
+            已验证模拟服务端延迟 46 秒返回正文、保活、断流、超时与取消场景；实际手机网络和服务端耗时仍取决于运行环境。
           files: release_apk/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

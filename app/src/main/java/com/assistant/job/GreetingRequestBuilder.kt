@@ -60,6 +60,7 @@ internal object GreetingRequestBuilder {
     private fun request(model: String, instructions: String, inputs: JSONObject): JSONObject =
         JSONObject().apply {
             put("model", model)
+            put("stream", true)
             put("temperature", 0.3)
             put("messages", JSONArray().apply {
                 put(JSONObject().put("role", "system").put("content", instructions))

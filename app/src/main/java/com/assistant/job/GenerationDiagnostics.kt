@@ -31,6 +31,14 @@ internal class GenerationDiagnostics(
     private var requestId = "未返回"
     private var contentType = "未返回"
     private var responseChars: Int? = null
+    private var responseBytes = 0L
+    private var firstDataAt: Long? = null
+    private var lastDataAt: Long? = null
+    private var streaming = false
+    private var streamEvents = 0
+    private var contentChars = 0L
+    private var reasoningChars = 0L
+    private var streamDone = false
     private var finishReason = "未返回"
     private var providerError = "无结构化错误信息"
 
@@ -51,6 +59,14 @@ internal class GenerationDiagnostics(
         requestId = "未返回"
         contentType = "未返回"
         responseChars = null
+        responseBytes = 0
+        firstDataAt = null
+        lastDataAt = null
+        streaming = false
+        streamEvents = 0
+        contentChars = 0
+        reasoningChars = 0
+        streamDone = false
         finishReason = "未返回"
         providerError = "无结构化错误信息"
     }
@@ -67,7 +83,37 @@ internal class GenerationDiagnostics(
         responseChars = body.length
         operation = "解析接口响应"
         val json = runCatching { JSONObject(body) }.getOrNull() ?: return
-        finishReason = json.optJSONArray("choices")?.optJSONObject(0)?.optString("finish_reason") ?: "未返回"
+        metadata(json)
+    }
+
+    fun received(bytes: Long) {
+        val now = nanoTime()
+        if (firstDataAt == null) firstDataAt = now
+        lastDataAt = now
+        responseBytes += bytes
+    }
+
+    fun streamStarted() {
+        streaming = true
+        operation = "读取流式响应"
+    }
+
+    fun streamEvent(json: JSONObject) {
+        streamEvents++
+        metadata(json)
+        val delta = json.optJSONArray("choices")?.optJSONObject(0)?.optJSONObject("delta")
+        contentChars += (delta?.opt("content") as? String)?.length ?: 0
+        reasoningChars += (delta?.opt("reasoning_content") as? String)?.length ?: 0
+    }
+
+    fun streamFinished() {
+        streamDone = true
+        requestFinished = nanoTime()
+        operation = "校验流式响应"
+    }
+
+    private fun metadata(json: JSONObject) {
+        (json.optJSONArray("choices")?.optJSONObject(0)?.opt("finish_reason") as? String)?.let { finishReason = it }
         val error = json.optJSONObject("error") ?: return
         providerError = listOf("code", "type", "message").mapNotNull { key ->
             val value = error.opt(key)
@@ -128,7 +174,10 @@ internal class GenerationDiagnostics(
             appendLine("HTTP状态：${httpStatus ?: "未收到响应头"}")
             appendLine("请求ID：$requestId")
             appendLine("Content-Type：$contentType")
-            appendLine("响应字符数：${responseChars ?: "未完整读取"}；finish_reason：$finishReason")
+            appendLine("响应字符数：${responseChars ?: if (streaming) "见流式统计" else "未完整读取"}；finish_reason：$finishReason")
+            appendLine("已收响应正文：$responseBytes bytes（解压后）；读取完成：${requestFinished != null}")
+            appendLine("首批正文等待：${firstDataAt?.let { (it - (requestStarted ?: started)) / 1_000_000 } ?: "未收到"} ms；距最后收包：${lastDataAt?.let { ((requestFinished ?: now) - it) / 1_000_000 } ?: "未收到"} ms")
+            if (streaming) appendLine("流式统计：事件=$streamEvents；回答=$contentChars 字符；思考=$reasoningChars 字符；收到[DONE]=$streamDone")
             appendLine("接口错误信息：\n${safe(providerError).take(2000)}")
             appendLine("异常链与调用栈：")
             causes.forEachIndexed { index, cause ->
