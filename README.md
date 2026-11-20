@@ -7,6 +7,18 @@
 
 ## 核心特性
 
+### Gemini 官方支持（v1.4.5）
+
+1. 进入「AI 设置」，在预设中选择「Gemini 官方」。应用填入 `https://generativelanguage.googleapis.com/v1beta/openai` 和默认文本模型 `gemini-4-hydrogen`。
+2. 填写 [Google AI Studio](https://aistudio.google.com/apikey) 的 Gemini API Key。切换服务会替换地址和模型，请同步替换为对应服务的 Key；不需要 `sk-` 前缀。此入口使用 Gemini Developer API，非 Vertex AI 登录方式。
+3. 点击「测试连通并拉取模型」，选择账户可访问的文本模型。也可在「模型名称」手动填写服务商提供的名称。模型列表测试仅验证列表访问，具体生成能力仍以实际请求为准；列表为空会报错，不填入其他厂商模型。
+4. 回到岗位详情点击悬浮球即可生成。Gemini 与原流程一致：每次使用完整 JD 和简历逐项对照、校验覆盖和引用，再生成话术；简历结构化解析、优势提炼及面试题也使用当前配置。
+
+- 官方域名的根地址、`/v1beta` 和完整兼容接口地址会统一为上述 Base URL；官方模型名自动去掉 `models/` 前缀。第三方 Gemini 中转需填写其提供的兼容 Base URL 和模型名，应用保留自定义路径。
+- Gemini 官方请求使用模型默认采样设置，不强制温度，也不关闭思考；通过官方兼容接口发送 Bearer Key、system/user 消息并接收 SSE。所有 AI 文本生成共用流式接收、120 秒连续无数据超时和每次 300 秒总时限，原有非流式 JSON 响应兼容仍保留。模型列表请求保留原超时。
+- 招呼语生成错误仍集中在「AI 设置 → 最近一次生成错误」，Google 的 `error.status`（例如 `RESOURCE_EXHAUSTED`）也写入脱敏报告；只保存字节/字符数量，不保存模型原文。
+- 实现依据（2026-11-20 核对）：Google 官方[兼容接口、鉴权、流式及模型列表文档](https://ai.google.dev/gemini-api/docs/openai)、[模型说明](https://ai.google.dev/gemini-api/docs/models/gemini-4-hydrogen)、[采样参数说明](https://ai.google.dev/gemini-api/docs/text-generation)。模型可用性以账户实际返回结果为准。
+
 ### 长响应与流式接收（v1.4.4）
 
 - 岗位逐项匹配和文案生成都使用 `stream: true`，逐步接收 SSE 保活、思考计数与回答内容。保持模型原有思考设置，仅拼接回答，思考原文不保存、不加入下一阶段请求或错误报告；兼容直接返回普通 JSON 的接口。
@@ -21,7 +33,7 @@
 - 「AI 设置」顶部集中展示「最近一次生成错误」，关闭悬浮窗或重启应用后仍可查看、复制或清除。仅在本机保存最后一份，不自动发送；成功生成或主动取消不会覆盖它。
 - 报告包含时间、报告 ID、应用/Android 版本、场景、失败阶段与操作、总耗时/阶段耗时/请求耗时、模型、接口地址、实际超时配置、输入长度、HTTP 状态、请求 ID、响应长度、结束原因、接口错误摘要及异常链/调用栈。
 - API Key、接口 URL 的认证信息/查询参数、常见令牌、手机号和邮箱会脱敏；不记录完整 JD、简历、聊天、提示词或模型响应正文。非 JSON 错误响应只保留状态、类型和长度；结构化接口错误保留脱敏后的 code/type/message 摘要。
-- v1.4.3 使用连接 20 秒、读取 45 秒、写入 20 秒；v1.4.4 已对生成流程单独调整，见上方。模型列表、简历解析等其他请求保留原配置。
+- v1.4.3 使用连接 20 秒、读取 45 秒、写入 20 秒；v1.4.4 已对生成流程单独调整，见上方。v1.4.5 将简历解析、优势提炼和面试题也接入相同的流式生成配置，模型列表请求保留原超时。
 
 ### JD 对齐与两阶段生成（v1.4.2）
 
@@ -79,7 +91,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.4.4.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.4.4/JobAssistant-v1.4.4.apk)
+- **最新正式版直链**：[JobAssistant-v1.4.5.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.4.5/JobAssistant-v1.4.5.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -94,9 +106,9 @@
 
 ### 第二步：配置 AI 模型
 1. 切换到底部 **「AI 设置」** 页面；
-2. 填入您的 **API Key**（支持 DeepSeek / 阿里通义千问 / OpenAI / OneAPI 等兼容 OpenAI 格式的接口）；
+2. 填入您的 **API Key**（支持 Gemini 官方 / DeepSeek / 阿里通义千问 / OpenAI / OneAPI 等兼容接口）；
 3. 点击 **【测试连通并获取模型】**，系统将进行真实网络 Ping 测速并拉取模型列表；
-4. 选择或自定义模型底座（如 `deepseek-chat` 或 `deepseek-reasoner`）。
+4. 选择服务端返回的文本模型，或在「模型名称」输入所用服务的模型 ID；Gemini 配置见上方。
 
 ### 第三步：完善求职档案（支持 AI 一键自动填充）
 1. 切换到底部 **「求职档案」** 页面；
@@ -139,6 +151,11 @@ job-floating-assistant/
 ---
 
 ## 版本演进记录
+
+- **v1.4.5**：
+  - 新增 Gemini 官方快捷入口、地址与模型名规范化及手动模型输入。
+  - 简历解析、优势提炼和面试题共用流式生成；保留招呼语逐项匹配和原文校验。
+  - 删除空模型列表的假默认值，诊断报告补充 Google 错误状态。
 
 - **v1.4.4**：
   - 两阶段生成使用流式接收，生成请求独立设置连续无数据超时与总时限，修复旧版 45 秒等待正文超时。

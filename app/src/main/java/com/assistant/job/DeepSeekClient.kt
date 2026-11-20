@@ -52,41 +52,19 @@ object DeepSeekClient {
             val baseUrl = StorageManager.getBaseUrl(context).trimEnd('/')
             val endpoint = "$baseUrl/models"
 
-            val request = Request.Builder()
-                .url(endpoint)
-                .addHeader("Authorization", "Bearer $apiKey")
-                .get()
-                .build()
-
-            val response = client.newCall(request).execute()
-            val latency = System.currentTimeMillis() - startTime
-            val responseBody = response.body?.string() ?: ""
-
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception("接口响应错误 (${response.code}): $responseBody"))
-            }
-
-            val json = JSONObject(responseBody)
-            val dataArray = json.optJSONArray("data")
-            val models = mutableListOf<String>()
-
-            if (dataArray != null) {
-                for (i in 0 until dataArray.length()) {
-                    val item = dataArray.getJSONObject(i)
-                    val id = item.optString("id")
-                    if (id.isNotBlank()) {
-                        models.add(id)
-                    }
-                }
-            }
-
-            if (models.isEmpty()) {
-                models.addAll(listOf("deepseek-chat", "deepseek-reasoner", "qwen-turbo", "gpt-4o-mini"))
-            }
-
-            Result.success(Pair(models.sorted(), latency))
+            val models = fetchModels(endpoint, apiKey)
+            Result.success(Pair(models, System.currentTimeMillis() - startTime))
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    internal suspend fun fetchModels(endpoint: String, apiKey: String): List<String> = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url(endpoint)
+            .header("Authorization", "Bearer ${apiKey.trim()}").get().build()
+        client.newCall(request).execute().use { response ->
+            check(response.isSuccessful) { "模型列表请求失败 (HTTP ${response.code})，请检查对应服务的 API Key、接口地址和使用权限" }
+            AiEndpointConfig.models(JSONObject(response.body?.string().orEmpty()), endpoint)
         }
     }
 
@@ -200,32 +178,11 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
                 put("temperature", 0.6)
             }
 
-            val request = Request.Builder()
-                .url(endpoint)
-                .addHeader("Authorization", "Bearer $apiKey")
-                .addHeader("Content-Type", "application/json")
-                .post(requestBodyJson.toString().toRequestBody(JSON_MEDIA_TYPE))
-                .build()
-
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string() ?: ""
-
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception("AI 提炼失败 (${response.code}): $responseBody"))
-            }
-
-            val responseJson = JSONObject(responseBody)
-            val choices = responseJson.optJSONArray("choices")
-            if (choices == null || choices.length() == 0) {
-                return@withContext Result.failure(Exception("AI 模型未返回有效回复内容"))
-            }
-
-            val content = choices.getJSONObject(0)
-                .getJSONObject("message")
-                .getString("content")
-                .trim()
+            val content = completeGreetingRequest(endpoint, apiKey, requestBodyJson)
 
             Result.success(content)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -280,10 +237,10 @@ ${if (jdText.isNotBlank()) jdText else "无（请基于候选人整体简历提�
         diagnostics: GenerationDiagnostics? = null, httpClient: OkHttpClient = generationClient
     ): String =
         suspendCancellableCoroutine { continuation ->
-            val payload = body.toString()
+            val payload = AiEndpointConfig.completionBody(body, endpoint).toString()
             diagnostics?.request(payload.toByteArray(Charsets.UTF_8).size)
             val request = Request.Builder().url(endpoint)
-                .addHeader("Authorization", "Bearer $apiKey")
+                .addHeader("Authorization", "Bearer ${apiKey.trim()}")
                 .post(payload.toRequestBody(JSON_MEDIA_TYPE)).build()
             val call = httpClient.newCall(request)
             continuation.invokeOnCancellation { call.cancel() }
@@ -514,30 +471,7 @@ $rawText
                 put("temperature", 0.3)
             }
 
-            val request = Request.Builder()
-                .url(endpoint)
-                .addHeader("Authorization", "Bearer $apiKey")
-                .addHeader("Content-Type", "application/json")
-                .post(requestBodyJson.toString().toRequestBody(JSON_MEDIA_TYPE))
-                .build()
-
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string() ?: ""
-
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception("AI 解析接口响应失败 (${response.code}): $responseBody"))
-            }
-
-            val responseJson = JSONObject(responseBody)
-            val choices = responseJson.optJSONArray("choices")
-            if (choices == null || choices.length() == 0) {
-                return@withContext Result.failure(Exception("AI 模型未返回有效内容"))
-            }
-
-            var content = choices.getJSONObject(0)
-                .getJSONObject("message")
-                .getString("content")
-                .trim()
+            var content = completeGreetingRequest(endpoint, apiKey, requestBodyJson)
 
             if (content.startsWith("```json")) {
                 content = content.removePrefix("```json").trim()
@@ -569,6 +503,8 @@ $rawText
                     aiSummary = aiSummary
                 )
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -609,31 +545,11 @@ $rawText
                 put("temperature", temperature)
             }
 
-            val request = Request.Builder()
-                .url(endpoint)
-                .addHeader("Authorization", "Bearer $apiKey")
-                .addHeader("Content-Type", "application/json")
-                .post(requestBodyJson.toString().toRequestBody(JSON_MEDIA_TYPE))
-                .build()
+            val content = completeGreetingRequest(endpoint, apiKey, requestBodyJson)
 
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string() ?: ""
-
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception("API 响应失败 (${response.code}): $responseBody"))
-            }
-
-            val responseJson = JSONObject(responseBody)
-            val choices = responseJson.optJSONArray("choices")
-            if (choices == null || choices.length() == 0) {
-                return@withContext Result.failure(Exception("AI 响应未包含有效内容: $responseBody"))
-            }
-
-            val content = choices.getJSONObject(0)
-                .getJSONObject("message")
-                .getString("content")
-                .trim()
             Result.success(content)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -692,6 +608,8 @@ ${if (effectiveResume.isNotBlank()) effectiveResume else "暂无详细简历，�
             val rawText = rawResult.getOrNull() ?: ""
             val questions = parseInterviewQuestions(rawText)
             Result.success(questions)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }

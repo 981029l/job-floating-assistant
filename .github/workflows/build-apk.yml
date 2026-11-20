@@ -39,13 +39,13 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.4.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.5.apk
 
       - name: 校验 APK 版本与签名
         run: |
           BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0"
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.4.apk
-          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.4.apk > apk-badging.txt
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.5.apk
+          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.5.apk > apk-badging.txt
           python3 - <<'PY'
           import json, pathlib, re
           version = json.loads(pathlib.Path('version.json').read_text())
@@ -59,7 +59,7 @@ jobs:
           print(badging.splitlines()[0])
           PY
           cd release_apk
-          sha256sum JobAssistant-v1.4.4.apk > SHA256SUMS.txt
+          sha256sum JobAssistant-v1.4.5.apk > SHA256SUMS.txt
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -80,19 +80,19 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.4.4
+          tag_name: v1.4.5
           target_commitish: ${{ github.sha }}
-          name: "AI求职助手 v1.4.4 · 修复生成正文读取超时"
+          name: "AI求职助手 v1.4.5 · 支持 Gemini"
           body: |
-            修复收到 HTTP 200 后仍在等待模型正文、触发旧版 45 秒读取超时的问题。
+            新增 Gemini 官方接入，可在「AI 设置」选择预设并填写 Google AI Studio API Key。
 
-            - 两阶段生成改为流式读取，接收保活与增量回答，保留模型原有思考设置。
-            - 生成请求连续无数据超时 120 秒，每阶段总时限 5 分钟；支持取消，不自动重试生成。
-            - 流中断、输出截断或未正常结束时停止，不使用不完整匹配结果；兼容返回普通 JSON 的接口。
-            - 可复制报告新增已收字节、回答/思考字符数、首批正文等待、最后收包时间与流结束状态；不保存思考原文。
-            - 保留完整 JD 与简历逐项对照、覆盖和引用校验；沿用原签名，可覆盖安装。
+            - 自动填入官方兼容接口和默认文本模型，可从服务端拉取列表或手动输入模型名称。
+            - 招呼语仍先逐项核对完整 JD 与简历，再校验并生成；简历解析、优势提炼和面试题也使用当前模型。
+            - 所有 AI 文本生成共用流式读取与超时控制；Google 官方接口使用默认采样设置。
+            - 模型列表为空时明确提示，不伪造可用模型；错误报告包含 Google 的 status 字段。
+            - 沿用原签名，可覆盖安装。
 
-            已验证模拟服务端延迟 46 秒返回正文、保活、断流、超时与取消场景；实际手机网络和服务端耗时仍取决于运行环境。
+            已通过本地模拟服务验证 Gemini 请求格式与两阶段流程；未使用个人 Gemini Key 执行真实付费调用。
           files: release_apk/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

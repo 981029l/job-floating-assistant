@@ -1,6 +1,6 @@
 {
-  "versionCode": 44,
-  "versionName": "1.4.4",
-  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.4.4/JobAssistant-v1.4.4.apk",
-  "releaseNotes": "1. 岗位匹配与招呼语生成改为流式接收，适配模型长时间思考与保活。\n2. 生成请求连续无数据超时为120秒，每阶段总时限5分钟，支持主动取消。\n3. 错误报告增加已收字节、回答/思考字符数、首批正文等待和最后收包时间，不保存思考原文。\n4. 中断、截断或未正常结束的结果停止使用，保留逐项匹配和原文引用校验；沿用原签名。"
+  "versionCode": 45,
+  "versionName": "1.4.5",
+  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.4.5/JobAssistant-v1.4.5.apk",
+  "releaseNotes": "1. 新增 Gemini 官方快捷配置，使用 Google AI Studio API Key，可拉取模型或手动输入名称。\n2. 招呼语逐项匹配、简历解析、优势提炼和面试题共用流式生成，支持 Gemini。\n3. 自动规范 Gemini 官方接口地址与模型名称，官方请求使用默认采样设置；模型列表为空时明确报错。\n4. 诊断报告补充 Google 错误状态；沿用原签名，可覆盖安装。"
 }

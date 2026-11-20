@@ -2508,14 +2508,7 @@ fun SettingsTab(
     var isPasswordVisible by remember { mutableStateOf(false) }
     var selectedPromptStyle by remember { mutableStateOf("硬核技术型") }
 
-    val presetEndpoints = remember {
-        listOf(
-            Triple("DeepSeek 官方", "https://api.deepseek.com/v1", "deepseek-chat"),
-            Triple("OpenAI", "https://api.openai.com/v1", "gpt-4o-mini"),
-            Triple("阿里通义千问", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-plus"),
-            Triple("OneAPI 聚合转接", "https://api.oneapi.pro/v1", "claude-3-5-sonnet")
-        )
-    }
+    val presetEndpoints = AiEndpointConfig.presets
 
     // 真实网络连通性状态 (彻底移除假 pingMs 和假 modelCount)
     var isTestingConnection by remember { mutableStateOf(false) }
@@ -2600,7 +2593,7 @@ fun SettingsTab(
                 }
 
                 Text(
-                    text = "支持 DeepSeek / 通义千问 / OpenAI / OneAPI 等所有兼容 OpenAI 规范的 API 接口",
+                    text = "支持 Gemini 官方 / DeepSeek / 通义千问 / OpenAI / OneAPI 等兼容接口",
                     fontSize = 10.5.sp,
                     color = Color(0xFF94A3B8),
                     lineHeight = 15.sp
@@ -2615,17 +2608,18 @@ fun SettingsTab(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     presetEndpoints.forEach { (name, url, defaultM) ->
-                        val isSelected = baseUrl == url
+                        val isSelected = AiEndpointConfig.baseUrl(baseUrl) == url
                         Surface(
                             shape = RoundedCornerShape(8.dp),
                             color = if (isSelected) Color(0xFFEEF2FF) else Color(0xFFF8FAFC),
                             border = BorderStroke(1.dp, if (isSelected) Color(0xFF818CF8) else Color(0xFFE2E8F0)),
-                            modifier = Modifier.clickable {
+                            modifier = Modifier.clickable(enabled = !isTestingConnection) {
                                 onBaseUrlChange(url)
                                 onModelNameChange(defaultM)
                                 connectionTested = false
                                 connectionError = ""
-                                Toast.makeText(context, "已切换为: $name", Toast.LENGTH_SHORT).show()
+                                fetchedModels = emptyList()
+                                Toast.makeText(context, "已切换为: $name，请填写对应服务的 API Key", Toast.LENGTH_LONG).show()
                             }
                         ) {
                             Text(
@@ -2648,7 +2642,8 @@ fun SettingsTab(
                         connectionError = ""
                     },
                     label = { Text("API Key (必填)") },
-                    placeholder = { Text("sk-...", color = Color(0xFFCBD5E1)) },
+                    placeholder = { Text(if (AiEndpointConfig.isGeminiOfficial(baseUrl)) "粘贴 Google AI Studio 的 API Key" else "填写当前服务的 API Key", color = Color(0xFFCBD5E1)) },
+                    enabled = !isTestingConnection,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
@@ -2673,6 +2668,7 @@ fun SettingsTab(
                         connectionTested = false
                         connectionError = ""
                     },
+                    enabled = !isTestingConnection,
                     label = { Text("接口 Base URL") },
                     placeholder = { Text("https://api.deepseek.com/v1") },
                     modifier = Modifier.fillMaxWidth(),
@@ -2680,7 +2676,22 @@ fun SettingsTab(
                     singleLine = true
                 )
 
-                // 当前模型选择
+                if (AiEndpointConfig.isGeminiOfficial(baseUrl)) {
+                    Text(
+                        "使用 Google AI Studio 的 Gemini API Key。先测试连通并选择文本模型；也可手动填写模型名称。",
+                        fontSize = 11.sp, color = Color(0xFF64748B), lineHeight = 16.sp
+                    )
+                }
+
+                OutlinedTextField(
+                    value = modelName,
+                    onValueChange = onModelNameChange,
+                    label = { Text("模型名称（可手动填写）") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,

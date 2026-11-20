@@ -343,7 +343,7 @@ object StorageManager {
     }
 
     fun getBaseUrl(context: Context): String {
-        return getPrefs(context).getString(KEY_BASE_URL, DEFAULT_BASE_URL) ?: DEFAULT_BASE_URL
+        return AiEndpointConfig.baseUrl(getPrefs(context).getString(KEY_BASE_URL, DEFAULT_BASE_URL) ?: DEFAULT_BASE_URL)
     }
 
     fun saveModel(context: Context, model: String) {
@@ -351,7 +351,7 @@ object StorageManager {
     }
 
     fun getModel(context: Context): String {
-        return getPrefs(context).getString(KEY_MODEL, DEFAULT_MODEL) ?: DEFAULT_MODEL
+        return AiEndpointConfig.model(getPrefs(context).getString(KEY_MODEL, DEFAULT_MODEL) ?: DEFAULT_MODEL, getBaseUrl(context))
     }
 
     fun saveResume(context: Context, resume: String) {

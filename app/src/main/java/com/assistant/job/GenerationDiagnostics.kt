@@ -115,7 +115,7 @@ internal class GenerationDiagnostics(
     private fun metadata(json: JSONObject) {
         (json.optJSONArray("choices")?.optJSONObject(0)?.opt("finish_reason") as? String)?.let { finishReason = it }
         val error = json.optJSONObject("error") ?: return
-        providerError = listOf("code", "type", "message").mapNotNull { key ->
+        providerError = listOf("code", "type", "status", "message").mapNotNull { key ->
             val value = error.opt(key)
             if (value is String || value is Number) "$key=$value" else null
         }.joinToString("\n").ifBlank { "无结构化错误信息" }
