@@ -39,13 +39,13 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.5.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.6.apk
 
       - name: 校验 APK 版本与签名
         run: |
           BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0"
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.5.apk
-          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.5.apk > apk-badging.txt
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.6.apk
+          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.6.apk > apk-badging.txt
           python3 - <<'PY'
           import json, pathlib, re
           version = json.loads(pathlib.Path('version.json').read_text())
@@ -59,7 +59,7 @@ jobs:
           print(badging.splitlines()[0])
           PY
           cd release_apk
-          sha256sum JobAssistant-v1.4.5.apk > SHA256SUMS.txt
+          sha256sum JobAssistant-v1.4.6.apk > SHA256SUMS.txt
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -80,19 +80,17 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.4.5
+          tag_name: v1.4.6
           target_commitish: ${{ github.sha }}
-          name: "AI求职助手 v1.4.5 · 支持 Gemini"
+          name: "AI求职助手 v1.4.6 · 精修开场白边界与公文腔约束"
           body: |
-            新增 Gemini 官方接入，可在「AI 设置」选择预设并填写 Google AI Studio API Key。
+            精修首次打招呼默认提示词与通用沟通礼仪规范，让风格一与风格二整体稳定保持高命中率与真实边界：
 
-            - 自动填入官方兼容接口和默认文本模型，可从服务端拉取列表或手动输入模型名称。
-            - 招呼语仍先逐项核对完整 JD 与简历，再校验并生成；简历解析、优势提炼和面试题也使用当前模型。
-            - 所有 AI 文本生成共用流式读取与超时控制；Google 官方接口使用默认采样设置。
-            - 模型列表为空时明确提示，不伪造可用模型；错误报告包含 Google 的 status 字段。
-            - 沿用原签名，可覆盖安装。
-
-            已通过本地模拟服务验证 Gemini 请求格式与两阶段流程；未使用个人 Gemini Key 执行真实付费调用。
+            - 彻底禁用「贵司/贵公司/尊敬的」公文腔与「熟练掌握/精通」应试套话，统一以自然平视的职场口吻开场。
+            - 强化多项目职责与主导边界：优先写简历中具体、有区分度的交付模块，严禁把「参与」拔高为「独立负责」，严禁并列多个项目时把某一项目的后端、权限或成果扩散到另一个项目。
+            - 优化风格一自然收口引导（轻量询问是否方便发简历进一步了解），保留风格二对未体现关键职责的开放式确认。
+            - 支持从 v1.4.5 未修改默认提示词自动无感迁移至 v1.4.6，用户自定义提示词仍完整保留。
+            - 沿用统一 `debug.keystore` 持久签名，支持覆盖安装。
           files: release_apk/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

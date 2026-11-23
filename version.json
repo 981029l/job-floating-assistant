@@ -1,6 +1,6 @@
 {
-  "versionCode": 45,
-  "versionName": "1.4.5",
-  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.4.5/JobAssistant-v1.4.5.apk",
-  "releaseNotes": "1. 新增 Gemini 官方快捷配置，使用 Google AI Studio API Key，可拉取模型或手动输入名称。\n2. 招呼语逐项匹配、简历解析、优势提炼和面试题共用流式生成，支持 Gemini。\n3. 自动规范 Gemini 官方接口地址与模型名称，官方请求使用默认采样设置；模型列表为空时明确报错。\n4. 诊断报告补充 Google 错误状态；沿用原签名，可覆盖安装。"
+  "versionCode": 46,
+  "versionName": "1.4.6",
+  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.4.6/JobAssistant-v1.4.6.apk",
+  "releaseNotes": "1. 精修首次打招呼默认提示词与通用礼仪规则：彻底禁用「贵司/贵公司/尊敬的」公文腔与「熟练掌握/精通」应试套话。\n2. 强化多项目职责与主导边界：要求优先写简历中具体、有区分度的交付模块（避免泛称“前端交互”），严禁将“参与”拔高为“独立负责”，严禁并列项目时把某一项目的后端/权限归属扩散到另一项目。\n3. 优化风格一自然收口引导（轻量询问是否方便发简历进一步了解），保留风格二对未体现关键职责的高情商开放式确认。\n4. 支持从 v1.4.5 未修改默认提示词自动无感迁移至 v1.4.6；沿用原签名，支持覆盖安装。"
 }

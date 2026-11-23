@@ -91,7 +91,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.4.5.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.4.5/JobAssistant-v1.4.5.apk)
+- **最新正式版直链**：[JobAssistant-v1.4.6.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.4.6/JobAssistant-v1.4.6.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -151,6 +151,11 @@ job-floating-assistant/
 ---
 
 ## 版本演进记录
+
+- **v1.4.6**：
+  - 精修首次打招呼默认提示词与通用沟通礼仪规范：彻底禁用「贵司/贵公司/尊敬的」公文腔与「熟练掌握/精通」应试套话。
+  - 强化多项目职责与主导边界：优先写简历中具体、有区分度的交付模块，严禁把「参与」拔高为「独立负责」，严禁并列项目时扩散后端/权限归属；优化风格一发简历引导收口。
+  - 支持从 v1.4.5 未修改默认提示词自动无感迁移至 v1.4.6。
 
 - **v1.4.5**：
   - 新增 Gemini 官方快捷入口、地址与模型名规范化及手动模型输入。
