@@ -91,7 +91,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.4.6.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.4.6/JobAssistant-v1.4.6.apk)
+- **最新正式版直链**：[JobAssistant-v1.4.7.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.4.7/JobAssistant-v1.4.7.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -151,6 +151,10 @@ job-floating-assistant/
 ---
 
 ## 版本演进记录
+
+- **v1.4.7**：
+  - 修复 BOSS 直聘聊天页「已读未回 / 深入沟通」读不到岗位 JD：岗位记忆库升级为本地持久化存储（保留最近 100 个岗位），跨天或重启后不再丢失。
+  - 全面适配 BOSS 岗位详情页正文下方「公司信息」卡片与顶部「公司简称·HR职位」标签，支持聊天页公司简称/全称与带薪资标题的两级精准回查，同时严格防串岗。
 
 - **v1.4.6**：
   - 精修首次打招呼默认提示词与通用沟通礼仪规范：彻底禁用「贵司/贵公司/尊敬的」公文腔与「熟练掌握/精通」应试套话。

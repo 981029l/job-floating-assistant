@@ -28,6 +28,7 @@ object StorageManager {
     private const val KEY_AI_SUMMARY = "ai_summary"
     private const val KEY_CUSTOM_TAGS = "custom_tech_tags"
     private const val KEY_GENERATION_ERROR = "last_generation_error"
+    private const val KEY_JOB_MEMORY = "job_memory_store_v1"
 
     const val DEFAULT_BASE_URL = "https://api.deepseek.com/v1"
     const val DEFAULT_MODEL = "deepseek-flash"
@@ -573,5 +574,13 @@ HR 已经收到候选人简历，并明确表示将简历转交给技术人员�
     fun getCustomTags(context: Context): List<String> {
         val s = getPrefs(context).getString(KEY_CUSTOM_TAGS, DEFAULT_CUSTOM_TAGS) ?: DEFAULT_CUSTOM_TAGS
         return s.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    }
+
+    fun saveJobMemory(context: Context, json: String) {
+        getPrefs(context).edit().putString(KEY_JOB_MEMORY, json).apply()
+    }
+
+    fun getJobMemory(context: Context): String {
+        return getPrefs(context).getString(KEY_JOB_MEMORY, "") ?: ""
     }
 }

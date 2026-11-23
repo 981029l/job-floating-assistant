@@ -24,9 +24,20 @@ class JobAccessibilityService : AccessibilityService() {
         private var isMergedLongJd: Boolean = false
 
         private val jobMemory = JobMemoryStore()
+        @Volatile
+        private var isJobMemoryLoaded: Boolean = false
         private var lastJobIdentity = JobContext.Identity()
         var lastMatchedJobTitle: String = ""
             private set
+
+        private fun ensureJobMemoryLoaded(context: Context) {
+            if (isJobMemoryLoaded) return
+            synchronized(jobMemory) {
+                if (isJobMemoryLoaded) return
+                jobMemory.loadJson(StorageManager.getJobMemory(context))
+                isJobMemoryLoaded = true
+            }
+        }
 
         data class SceneInspection(
             val mode: GenerationMode,
@@ -106,7 +117,10 @@ class JobAccessibilityService : AccessibilityService() {
                 val chatHistory = historyCandidates.takeLast(4).joinToString("\n")
                 val latestMessage = if (isHrReplied) lastLine else (historyCandidates.lastOrNull() ?: "")
 
-                val matchedJob = jobMemory.find(root.packageName?.toString() ?: "", allTextLines)
+                ensureJobMemoryLoaded(service)
+                val matchedJob = synchronized(jobMemory) {
+                    jobMemory.find(root.packageName?.toString() ?: "", allTextLines)
+                }
                 lastMatchedJobTitle = matchedJob?.identity?.title ?: ""
                 val jdText = matchedJob?.fullJd ?: ""
                 val fullScreen = allTextLines.joinToString("\n")
@@ -114,7 +128,7 @@ class JobAccessibilityService : AccessibilityService() {
                 val resumeStatus = if (hasResumeMention) "聊天中已出现简历发送或索要记录" else "暂未发送简历"
                 return SceneInspection(mode, jdText, chatHistory, latestMessage, screenText = fullScreen, resumeStatus = resumeStatus, elapsedTime = "")
             } else {
-                val jd = captureJd(root)
+                val jd = captureJd(root, false, service)
                 return SceneInspection(GenerationMode.FIRST_ICEBREAK, jd, "", "", screenText = jd, resumeStatus = "未发送", elapsedTime = "")
             }
         }
@@ -185,7 +199,12 @@ class JobAccessibilityService : AccessibilityService() {
             return false
         }
 
-        private fun captureJd(root: AccessibilityNodeInfo, allowScrollContinuation: Boolean = false): String {
+        private fun captureJd(
+            root: AccessibilityNodeInfo,
+            allowScrollContinuation: Boolean = false,
+            context: Context? = instance
+        ): String {
+            context?.let(::ensureJobMemoryLoaded)
             val currentLines = mutableListOf<String>()
             collectNodeLines(root, currentLines)
             val pkg = root.packageName?.toString() ?: ""
@@ -202,9 +221,16 @@ class JobAccessibilityService : AccessibilityService() {
                 return ""
             }
 
+            val mergedCompany = when {
+                identity.company.isBlank() -> lastJobIdentity.company
+                lastJobIdentity.company.isBlank() -> identity.company
+                JobContext.sameCompany(lastJobIdentity.company, identity.company) &&
+                    lastJobIdentity.company.length > identity.company.length -> lastJobIdentity.company
+                else -> identity.company
+            }
             lastJobIdentity = JobContext.Identity(
                 identity.title.ifBlank { lastJobIdentity.title },
-                identity.company.ifBlank { lastJobIdentity.company }
+                mergedCompany
             )
             val previousSize = accumulatedLines.size
             accumulatedLines.addAll(JobContext.jdLines(currentLines))
@@ -213,7 +239,13 @@ class JobAccessibilityService : AccessibilityService() {
             if (fullJd.length < 20) return ""
             cachedAppScreenText = fullJd
             lastExtractedJd = fullJd
-            jobMemory.record(pkg, accumulatedLines.toList(), fullJd)
+            val recorded = synchronized(jobMemory) {
+                jobMemory.record(pkg, accumulatedLines.toList(), fullJd, lastJobIdentity)
+            }
+            if (recorded && context != null) {
+                val snapshot = synchronized(jobMemory) { jobMemory.toJson() }
+                StorageManager.saveJobMemory(context, snapshot)
+            }
             return fullJd
         }
 
@@ -241,6 +273,7 @@ class JobAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
+        ensureJobMemoryLoaded(this)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -265,7 +298,7 @@ class JobAccessibilityService : AccessibilityService() {
         ) {
             val root = applicationRoot(this) ?: return
             if (root.packageName?.toString() != pkg) return
-            captureJd(root, event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED)
+            captureJd(root, event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED, this)
         }
     }
 

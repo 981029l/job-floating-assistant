@@ -39,13 +39,13 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.6.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.7.apk
 
       - name: 校验 APK 版本与签名
         run: |
           BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0"
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.6.apk
-          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.6.apk > apk-badging.txt
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.7.apk
+          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.7.apk > apk-badging.txt
           python3 - <<'PY'
           import json, pathlib, re
           version = json.loads(pathlib.Path('version.json').read_text())
@@ -59,7 +59,7 @@ jobs:
           print(badging.splitlines()[0])
           PY
           cd release_apk
-          sha256sum JobAssistant-v1.4.6.apk > SHA256SUMS.txt
+          sha256sum JobAssistant-v1.4.7.apk > SHA256SUMS.txt
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -80,17 +80,16 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.4.6
+          tag_name: v1.4.7
           target_commitish: ${{ github.sha }}
-          name: "AI求职助手 v1.4.6 · 精修开场白边界与公文腔约束"
+          name: "AI求职助手 v1.4.7 · 修复 BOSS 聊天页已读未回读不到 JD"
           body: |
-            精修首次打招呼默认提示词与通用沟通礼仪规范，让风格一与风格二整体稳定保持高命中率与真实边界：
+            彻底修复在 BOSS 直聘聊天页选择「已读未回 / 深入沟通」时读取不到岗位 JD 信息的核心问题：
 
-            - 彻底禁用「贵司/贵公司/尊敬的」公文腔与「熟练掌握/精通」应试套话，统一以自然平视的职场口吻开场。
-            - 强化多项目职责与主导边界：优先写简历中具体、有区分度的交付模块，严禁把「参与」拔高为「独立负责」，严禁并列多个项目时把某一项目的后端、权限或成果扩散到另一个项目。
-            - 优化风格一自然收口引导（轻量询问是否方便发简历进一步了解），保留风格二对未体现关键职责的开放式确认。
-            - 支持从 v1.4.5 未修改默认提示词自动无感迁移至 v1.4.6，用户自定义提示词仍完整保留。
-            - 沿用统一 `debug.keystore` 持久签名，支持覆盖安装。
+            - **岗位记忆库本地持久化**：`JobMemoryStore` 升级为 `SharedPreferences` JSON 持久化存储（保留最近 100 个岗位），隔天沟通、后台重启或覆盖升级 APK 后不再丢失已看过的 JD。
+            - **适配 BOSS 岗位详情页真实布局**：支持提取正文下方「公司信息」卡片与顶部「公司简称·HR职位」徽章，下滑读取到公司全称时平滑合并升级，不再误清空 JD 缓冲区。
+            - **升级聊天页两级精准回查**：支持剥离「沟通职位：」前缀与「15-20K」薪资后缀，支持公司全称与聊天页「简称·头衔」精准匹配，同时严格隔离城市标签与跨公司冲突，守住零串岗底线。
+            - 补齐 5 组 BOSS 真场景与持久化单元测试；沿用统一 `debug.keystore` 持久签名，支持覆盖安装。
           files: release_apk/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
