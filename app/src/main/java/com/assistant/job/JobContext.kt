@@ -8,7 +8,7 @@ internal object JobContext {
 
     private val jobWords = Regex("工程师|开发|研发|全栈|前端|后端|架构|设计|产品|算法|测试|运维|数据|Java|Android|iOS|Web|专家|总监|经理|主管|专员|实习", RegexOption.IGNORE_CASE)
     private val companyWords = Regex("公司|科技|网络|信息|集团|工作室|互娱|企业|银行|软件|数据|智能|电商|传媒|文化|咨询|教育|医疗|生物|半导体|电子|通信|金融|证券|保险|汽车|能源|物流|贸易|商贸|实业|研究院|实验室")
-    private val sectionWords = Regex("^(?:[一二三四五六七八九十0-9]+[、.．：:]\\s*)?(职位描述|岗位描述|岗位职责|工作职责|职位职责|任职要求|任职资格|职位要求|岗位要求|招聘要求|工作内容)", RegexOption.MULTILINE)
+    private val sectionWords = Regex("^(?:[一二三四五六七八九十0-9]+[、.．：:]\\s*)?(职位描述|岗位描述|岗位职责|工作职责|职位职责|任职要求|任职资格|职位要求|岗位要求|招聘要求|工作内容|职位详情|岗位详情|职位介绍|岗位介绍|职责描述|工作要求)", RegexOption.MULTILINE)
     private val ignoredHeaders = setOf("公司介绍", "公司信息", "公司主页", "企业介绍", "企业信息", "职位详情", "岗位详情", "职位描述", "岗位职责", "任职要求", "工作职责")
     private val companyCardHeaders = setOf("公司信息", "公司介绍", "企业信息", "企业介绍")
     private val trailingSections = setOf("公司介绍", "公司信息", "工商信息", "相似职位", "推荐职位", "其他职位", "猜你喜欢")

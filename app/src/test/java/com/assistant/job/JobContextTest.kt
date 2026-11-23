@@ -183,4 +183,18 @@ class JobContextTest {
         val bossChat = listOf("张先生", "英智创新·技术总监", "全栈工程师（独立站电商方向）", "已读")
         assertEquals(fullJd, store2.find(packageName, bossChat)?.fullJd)
     }
+
+    @Test fun bossJobDetailHeaderWithoutDutyKeywordIsRecognized() {
+        val bossDetail = listOf(
+            "全栈工程师（独立站电商方向）",
+            "15-20K",
+            "张先生",
+            "英智创新·技术总监",
+            "职位详情",
+            "1. 参与 AI 电商建站平台架构设计与核心功能开发。"
+        )
+        assertTrue(JobContext.hasJdSection(bossDetail))
+        assertEquals("全栈工程师（独立站电商方向）", JobContext.identity(bossDetail).title)
+        assertEquals("英智创新", JobContext.identity(bossDetail).company)
+    }
 }

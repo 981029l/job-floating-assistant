@@ -79,4 +79,23 @@ class JobMatchTest {
         copy.remove("segments")
         assertEquals(3, match.forInput(case.input).getJSONArray("segments").length())
     }
+
+    @Test fun fullWidthPunctuationAndAsciiCaseDifferencesAreTolerated() {
+        val input = case.input.copy(
+            jdText = "具备 Node.js + Express 后端经验（独立接口开发）。",
+            resume = "全栈研发：具备 Vue3、React、TypeScript 前端及 Node.js + Express 后端经验（深圳），可独立完成业务接口。"
+        )
+        val response = MatchFixtures.report(
+            MatchFixtures.row(
+                1,
+                MatchFixtures.item(
+                    "具备 node.js + express 后端经验(独立接口开发).",
+                    "direct",
+                    listOf("全栈研发:具备 vue3,React,typescript 前端及 node.js + express 后端经验(深圳),可独立完成业务接口.")
+                )
+            )
+        )
+        val report = JobMatch.parse(response, input).forInput(input)
+        assertEquals("direct", report.getJSONArray("segments").getJSONObject(0).getJSONArray("items").getJSONObject(0).getString("status"))
+    }
 }

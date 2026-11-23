@@ -39,13 +39,13 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.7.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.8.apk
 
       - name: 校验 APK 版本与签名
         run: |
           BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0"
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.7.apk
-          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.7.apk > apk-badging.txt
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.8.apk
+          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.8.apk > apk-badging.txt
           python3 - <<'PY'
           import json, pathlib, re
           version = json.loads(pathlib.Path('version.json').read_text())
@@ -59,7 +59,7 @@ jobs:
           print(badging.splitlines()[0])
           PY
           cd release_apk
-          sha256sum JobAssistant-v1.4.7.apk > SHA256SUMS.txt
+          sha256sum JobAssistant-v1.4.8.apk > SHA256SUMS.txt
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -80,16 +80,15 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.4.7
+          tag_name: v1.4.8
           target_commitish: ${{ github.sha }}
-          name: "AI求职助手 v1.4.7 · 修复 BOSS 聊天页已读未回读不到 JD"
+          name: "AI求职助手 v1.4.8 · 修复首次破冰识别职位详情与匹配标点大小写误判"
           body: |
-            彻底修复在 BOSS 直聘聊天页选择「已读未回 / 深入沟通」时读取不到岗位 JD 信息的核心问题：
+            修复首次破冰识别 BOSS 直聘详情页职位介绍与岗位逐项匹配引用校验标点误判：
 
-            - **岗位记忆库本地持久化**：`JobMemoryStore` 升级为 `SharedPreferences` JSON 持久化存储（保留最近 100 个岗位），隔天沟通、后台重启或覆盖升级 APK 后不再丢失已看过的 JD。
-            - **适配 BOSS 岗位详情页真实布局**：支持提取正文下方「公司信息」卡片与顶部「公司简称·HR职位」徽章，下滑读取到公司全称时平滑合并升级，不再误清空 JD 缓冲区。
-            - **升级聊天页两级精准回查**：支持剥离「沟通职位：」前缀与「15-20K」薪资后缀，支持公司全称与聊天页「简称·头衔」精准匹配，同时严格隔离城市标签与跨公司冲突，守住零串岗底线。
-            - 补齐 5 组 BOSS 真场景与持久化单元测试；沿用统一 `debug.keystore` 持久签名，支持覆盖安装。
+            - **修复首次破冰识别 BOSS 直聘详情页**：无障碍分段标记补充「职位详情/岗位详情/职位介绍/岗位介绍/职责描述/工作要求」，彻底解决首次进入 JD 详情页时因标题识别不全导致读取不到屏幕岗位 JD 的缺陷。
+            - **修复岗位匹配第一阶段引用校验标点与大小写误判**：优化 `JobMatch.compact()` 规范化算法，统一全角与半角标点映射并转 ASCII 小写比对，彻底杜绝模型返回逗号、括号或大小写不一致触发「岗位匹配引用了简历中不存在的内容」校验误判报错。
+            - 补齐相关单元测试；沿用统一 `debug.keystore` 持久签名，支持无缝覆盖安装。
           files: release_apk/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

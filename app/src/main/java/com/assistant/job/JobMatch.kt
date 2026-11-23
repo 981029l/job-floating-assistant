@@ -16,11 +16,35 @@ internal class JobMatch private constructor(
 
     companion object {
         private val separators = Regex("(?<=[；;。])|[\\r\\n]+")
-        private val whitespace = Regex("[\\s\\u00a0\\u3000]+")
         private val kinds = setOf("duty", "required", "preferred", "context")
         private val statuses = setOf("direct", "related", "unverified", "context")
 
-        private fun compact(text: String): String = text.replace(whitespace, "")
+        private fun compact(text: String): String {
+            val sb = StringBuilder(text.length)
+            for (ch in text) {
+                if (ch.isWhitespace() || ch == '\u00a0' || ch == '\u3000') continue
+                sb.append(
+                    when (ch) {
+                        '，', '、' -> ','
+                        '。' -> '.'
+                        '：' -> ':'
+                        '；' -> ';'
+                        '（' -> '('
+                        '）' -> ')'
+                        '【' -> '['
+                        '】' -> ']'
+                        '！' -> '!'
+                        '？' -> '?'
+                        '“', '”', '‘', '’' -> '"'
+                        '—', '–', '－', '−' -> '-'
+                        '／' -> '/'
+                        '＋' -> '+'
+                        else -> ch.lowercaseChar()
+                    }
+                )
+            }
+            return sb.toString()
+        }
 
         fun segments(jdText: String): List<String> = jdText.split(separators).map(String::trim).filter(String::isNotEmpty)
 

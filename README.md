@@ -91,7 +91,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.4.7.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.4.7/JobAssistant-v1.4.7.apk)
+- **最新正式版直链**：[JobAssistant-v1.4.8.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.4.8/JobAssistant-v1.4.8.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -151,6 +151,11 @@ job-floating-assistant/
 ---
 
 ## 版本演进记录
+
+- **v1.4.8**：
+  - 修复首次破冰识别 BOSS 直聘详情页职位介绍：无障碍分段标记补充「职位详情/岗位详情/职位介绍/岗位介绍/职责描述/工作要求」，彻底解决首次进入 JD 详情页时因大标题匹配不全导致读不到屏幕 JD 的缺陷。
+  - 修复岗位逐项匹配引用校验标点与大小写误判：在 `JobMatch.compact()` 中统一全角与半角标点映射并转 ASCII 小写比对，彻底杜绝模型返回逗号、括号或英文大小写不一致触发「岗位匹配引用了简历中不存在的内容」校验报错。
+  - 补充相关单元测试；沿用统一 `debug.keystore` 签名，支持无缝覆盖安装。
 
 - **v1.4.7**：
   - 修复 BOSS 直聘聊天页「已读未回 / 深入沟通」读不到岗位 JD：岗位记忆库升级为本地持久化存储（保留最近 100 个岗位），跨天或重启后不再丢失。
