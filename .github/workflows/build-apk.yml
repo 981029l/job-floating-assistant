@@ -39,13 +39,13 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.9.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.5.0.apk
 
       - name: 校验 APK 版本与签名
         run: |
           BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0"
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.9.apk
-          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.9.apk > apk-badging.txt
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.5.0.apk
+          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.5.0.apk > apk-badging.txt
           python3 - <<'PY'
           import json, pathlib, re
           version = json.loads(pathlib.Path('version.json').read_text())
@@ -59,7 +59,7 @@ jobs:
           print(badging.splitlines()[0])
           PY
           cd release_apk
-          sha256sum JobAssistant-v1.4.9.apk > SHA256SUMS.txt
+          sha256sum JobAssistant-v1.5.0.apk > SHA256SUMS.txt
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -80,14 +80,15 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.4.9
+          tag_name: v1.5.0
           target_commitish: ${{ github.sha }}
-          name: "AI求职助手 v1.4.9 · 修复深入沟通聊天短消息提取与公司省市前缀JD回查"
+          name: "AI求职助手 v1.5.0 · 悬浮窗全新上线聊天记录卡片与防漏读增强"
           body: |
-            修复「深入沟通 / 已读未回」读不到已看过 JD 及聊天短消息漏读导致的答非所问问题：
+            悬浮窗全新上线「聊天记录 / 对方消息」可视化卡片与底层短消息防漏读升级：
 
-            - **修复带省市前缀公司全称与聊天页简称匹配失败**：`JobContext.coreCompanyName()` 剥离省市前缀，解决 `深圳市xxx科技有限公司` 与聊天页简称匹配失败问题；同时兼容 `公司·在线/刚刚活跃` 徽章与纯公司简称回查。
-            - **重构聊天记录提取与过滤**：新增 `JobContext.extractChatMessages()`，保留 HR 短消息（如 `在吗`、`发份简历`、`期望薪资多少`），跳过 `EditText` 输入框、底部快捷按钮、时间戳与安全提示噪音，精准判断对方是否已回复。
+            - **悬浮窗上线专属「聊天记录」卡片**：深入沟通/已读等场景下直观展示抓到的对话记录与对方最新问题，状态徽章清晰标注（`对方已回 · xxx` / `已捕获 · n条` / `未捕获`），告别开盲盒。
+            - **支持聊天记录查看/修改/粘贴与一键重生**：点击展开可完整查看历史聊天，支持手动打字编辑或一键【粘贴】补充 HR 提问，点击【应用并重新生成】即刻按新上下文答复。
+            - **底层读屏防漏读升级**：彻底解除底层对短消息的盲目过滤，确保「发简历」「期望薪资多少」等 HR 真实短消息 100% 捕获，同时过滤候选人顶栏快捷操作按钮噪音。
             - 补齐相关单元测试；沿用统一 `debug.keystore` 持久签名，支持无缝覆盖安装。
           files: release_apk/*
         env:

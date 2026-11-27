@@ -195,6 +195,8 @@ class FloatingService : Service() {
         var currentResumeStatus = scene.resumeStatus
         var currentElapsedTime = scene.elapsedTime
         var currentJd = scene.jdText
+        var updateChatBadge: (() -> Unit)? = null
+        var chatEditTextRef: EditText? = null
 
         val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -504,12 +506,14 @@ class FloatingService : Service() {
             setOnClickListener {
                 val refreshedScene = JobAccessibilityService.inspectCurrentScene()
                 val latestJd = refreshedScene.jdText
+                currentChatHistory = refreshedScene.chatHistory
+                currentLatestMsg = refreshedScene.latestMessage
+                currentScreenText = refreshedScene.screenText
+                currentResumeStatus = refreshedScene.resumeStatus
+                currentElapsedTime = refreshedScene.elapsedTime
+                updateChatBadge?.invoke()
+                chatEditTextRef?.setText(if (currentChatHistory.isNotBlank()) currentChatHistory else currentLatestMsg)
                 if (latestJd.length >= 20) {
-                    currentChatHistory = refreshedScene.chatHistory
-                    currentLatestMsg = refreshedScene.latestMessage
-                    currentScreenText = refreshedScene.screenText
-                    currentResumeStatus = refreshedScene.resumeStatus
-                    currentElapsedTime = refreshedScene.elapsedTime
                     jdEditText.setText(latestJd)
                     jdEditText.setSelection(latestJd.length)
                     previewSnippet.text = "预览: " + latestJd.replace("\n", " ").trim()
@@ -517,7 +521,7 @@ class FloatingService : Service() {
                     jdStatusBadge.text = if (isMerged) "合并长JD · ${latestJd.length}字" else "已就绪 · ${latestJd.length}字"
                     Toast.makeText(this@FloatingService, "已刷新并追加屏幕文本（当前共 ${latestJd.length} 字）", Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(this@FloatingService, "未捕获到新增屏幕内容，请稍作滑动后再试", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@FloatingService, "已刷新屏幕上下文，未捕获到新增长JD", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -646,6 +650,7 @@ class FloatingService : Service() {
                     if (currentMode != m) {
                         currentMode = m
                         updateTabStyles()
+                        updateChatBadge?.invoke()
                         Toast.makeText(this@FloatingService, "切换模式: ${m.tabTitle} (${m.badge})", Toast.LENGTH_SHORT).show()
                         triggerAiGeneration(contentContainer, currentJd, currentMode, currentChatHistory, currentLatestMsg, currentScreenText, currentResumeStatus, currentElapsedTime)
                     }
@@ -656,6 +661,244 @@ class FloatingService : Service() {
         }
         updateTabStyles()
         rootLayout.addView(tabScroll)
+
+        // -------------------------------------------------------------
+        // 聊天记录与最新消息卡片 (在深入沟通/已读等聊天场景或已捕获消息时展示)
+        // -------------------------------------------------------------
+        val chatCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((12 * density).toInt(), (10 * density).toInt(), (12 * density).toInt(), (10 * density).toInt())
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#F8FAFC"))
+                cornerRadius = 14 * density
+                setStroke((1.5f * density).toInt(), Color.parseColor("#E2E8F0"))
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = (6 * density).toInt()
+                bottomMargin = (6 * density).toInt()
+            }
+            visibility = if (currentMode != GenerationMode.FIRST_ICEBREAK || currentChatHistory.isNotBlank()) View.VISIBLE else View.GONE
+        }
+
+        val chatHeaderRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val chatTitleView = TextView(this).apply {
+            text = "聊天记录"
+            textSize = 13f
+            setTextColor(Color.parseColor("#1E293B"))
+            paint.isFakeBoldText = true
+        }
+
+        val chatStatusBadge = TextView(this).apply {
+            textSize = 10.5f
+            paint.isFakeBoldText = true
+            setPadding((6 * density).toInt(), (2 * density).toInt(), (6 * density).toInt(), (2 * density).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                leftMargin = (8 * density).toInt()
+            }
+        }
+
+        val chatSpacer = View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
+        }
+
+        val chatToggleBtn = TextView(this).apply {
+            text = "查看/修改"
+            textSize = 11.5f
+            setTextColor(Color.parseColor("#2563EB"))
+            paint.isFakeBoldText = true
+            setPadding((8 * density).toInt(), (3 * density).toInt(), (8 * density).toInt(), (3 * density).toInt())
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#EFF6FF"))
+                cornerRadius = 6 * density
+            }
+        }
+
+        chatHeaderRow.addView(chatTitleView)
+        chatHeaderRow.addView(chatStatusBadge)
+        chatHeaderRow.addView(chatSpacer)
+        chatHeaderRow.addView(chatToggleBtn)
+        chatCard.addView(chatHeaderRow)
+
+        val chatPreviewSnippet = TextView(this).apply {
+            textSize = 11f
+            setTextColor(Color.parseColor("#64748B"))
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+            setPadding(0, (6 * density).toInt(), 0, 0)
+        }
+        chatCard.addView(chatPreviewSnippet)
+
+        val chatEditSection = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, (8 * density).toInt(), 0, 0)
+            visibility = View.GONE
+        }
+
+        val chatEditText = EditText(this).apply {
+            val initText = if (currentChatHistory.isNotBlank()) currentChatHistory else currentLatestMsg
+            setText(initText)
+            hint = "可在此输入或粘贴对方提出的具体问题、双方聊天记录..."
+            textSize = 12f
+            setTextColor(Color.parseColor("#1E293B"))
+            minLines = 2
+            maxLines = 5
+            setLineSpacing(3f, 1.15f)
+            background = GradientDrawable().apply {
+                setColor(Color.WHITE)
+                cornerRadius = 10 * density
+                setStroke((1 * density).toInt(), Color.parseColor("#CBD5E1"))
+            }
+            setPadding((10 * density).toInt(), (10 * density).toInt(), (10 * density).toInt(), (10 * density).toInt())
+        }
+        chatEditTextRef = chatEditText
+
+        val chatActionRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, (8 * density).toInt(), 0, 0)
+        }
+
+        val chatPasteBtn = Button(this).apply {
+            text = "粘贴"
+            textSize = 11.5f
+            setTextColor(Color.parseColor("#2563EB"))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#EFF6FF"))
+                cornerRadius = 8 * density
+                setStroke((1 * density).toInt(), Color.parseColor("#BFDBFE"))
+            }
+            layoutParams = LinearLayout.LayoutParams(0, (36 * density).toInt(), 0.9f).apply {
+                rightMargin = (5 * density).toInt()
+            }
+            setOnClickListener {
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = clipboard.primaryClip
+                if (clip != null && clip.itemCount > 0) {
+                    val clipText = clip.getItemAt(0).text?.toString() ?: ""
+                    if (clipText.isNotBlank()) {
+                        chatEditText.setText(clipText)
+                        chatEditText.setSelection(clipText.length)
+                        Toast.makeText(this@FloatingService, "已粘贴聊天内容", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        val chatClearBtn = Button(this).apply {
+            text = "清空"
+            textSize = 11.5f
+            setTextColor(Color.parseColor("#64748B"))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#F1F5F9"))
+                cornerRadius = 8 * density
+            }
+            layoutParams = LinearLayout.LayoutParams((44 * density).toInt(), (36 * density).toInt()).apply {
+                rightMargin = (5 * density).toInt()
+            }
+            setOnClickListener {
+                chatEditText.setText("")
+            }
+        }
+
+        val chatApplyBtn = Button(this).apply {
+            text = "应用并重新生成"
+            textSize = 11.5f
+            setTextColor(Color.WHITE)
+            paint.isFakeBoldText = true
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#2563EB"))
+                cornerRadius = 8 * density
+            }
+            layoutParams = LinearLayout.LayoutParams(0, (36 * density).toInt(), 1.4f)
+        }
+
+        chatActionRow.addView(chatPasteBtn)
+        chatActionRow.addView(chatClearBtn)
+        chatActionRow.addView(chatApplyBtn)
+
+        chatEditSection.addView(chatEditText)
+        chatEditSection.addView(chatActionRow)
+        chatCard.addView(chatEditSection)
+
+        val updateChatBadgeAndPreview = {
+            val lines = currentChatHistory.lines().map { it.trim() }.filter { it.isNotBlank() }
+            chatCard.visibility = if (currentMode != GenerationMode.FIRST_ICEBREAK || currentChatHistory.isNotBlank()) View.VISIBLE else View.GONE
+            if (currentLatestMsg.isNotBlank()) {
+                val badgeText = if (currentLatestMsg.length > 8) currentLatestMsg.take(8) + ".." else currentLatestMsg
+                chatStatusBadge.text = "对方已回 · $badgeText"
+                chatStatusBadge.setTextColor(Color.parseColor("#059669"))
+                chatStatusBadge.background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#ECFDF5"))
+                    cornerRadius = 6 * density
+                }
+                chatPreviewSnippet.text = "对方最新: $currentLatestMsg"
+            } else if (lines.isNotEmpty()) {
+                chatStatusBadge.text = "已捕获 · ${lines.size}条消息"
+                chatStatusBadge.setTextColor(Color.parseColor("#4F46E5"))
+                chatStatusBadge.background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#EEF2FF"))
+                    cornerRadius = 6 * density
+                }
+                chatPreviewSnippet.text = "历史: " + lines.takeLast(2).joinToString(" | ")
+            } else {
+                chatStatusBadge.text = "未捕获 · 可手动输入"
+                chatStatusBadge.setTextColor(Color.parseColor("#D97706"))
+                chatStatusBadge.background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#FFFBEB"))
+                    cornerRadius = 6 * density
+                }
+                chatPreviewSnippet.text = "（未捕获到聊天记录，点击展开可手动输入 HR 提出的问题）"
+            }
+        }
+        updateChatBadge = updateChatBadgeAndPreview
+        updateChatBadgeAndPreview()
+
+        val chatToggleAction = {
+            val isExpanded = chatEditSection.visibility == View.VISIBLE
+            if (isExpanded) {
+                chatEditSection.visibility = View.GONE
+                chatPreviewSnippet.visibility = View.VISIBLE
+                chatToggleBtn.text = "查看/修改"
+            } else {
+                chatEditSection.visibility = View.VISIBLE
+                chatPreviewSnippet.visibility = View.GONE
+                chatToggleBtn.text = "收起"
+                chatEditText.requestFocus()
+            }
+        }
+        chatToggleBtn.setOnClickListener { chatToggleAction() }
+        chatPreviewSnippet.setOnClickListener { chatToggleAction() }
+
+        chatApplyBtn.setOnClickListener {
+            val inputChat = chatEditText.text.toString().trim()
+            currentChatHistory = inputChat
+            val lastNonEmptyLine = inputChat.lines().map { it.trim() }.lastOrNull { it.isNotBlank() } ?: ""
+            currentLatestMsg = lastNonEmptyLine
+            updateChatBadgeAndPreview()
+
+            chatEditSection.visibility = View.GONE
+            chatPreviewSnippet.visibility = View.VISIBLE
+            chatToggleBtn.text = "查看/修改"
+
+            if (currentJd.length >= 15) {
+                Toast.makeText(this@FloatingService, "已应用最新聊天记录，重新生成中...", Toast.LENGTH_SHORT).show()
+                triggerAiGeneration(contentContainer, currentJd, currentMode, currentChatHistory, currentLatestMsg, currentScreenText, currentResumeStatus, currentElapsedTime)
+            } else {
+                Toast.makeText(this@FloatingService, "已应用聊天记录；请先确认或粘贴岗位 JD 即可生成回复", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        rootLayout.addView(chatCard)
         rootLayout.addView(scrollView)
 
         // 绑定重新生成按钮点击事件
@@ -698,17 +941,55 @@ class FloatingService : Service() {
         if (currentJd.length >= 15) {
             triggerAiGeneration(contentContainer, currentJd, currentMode, currentChatHistory, currentLatestMsg, currentScreenText, currentResumeStatus, currentElapsedTime)
         } else {
-            // 如果初次识别没有达到 20 字，在下方展示友好引导
+            // 如果初次识别没有达到 15 字，在下方展示友好引导与抓屏诊断按钮
             contentContainer.removeAllViews()
+            val chatSummary = if (currentLatestMsg.isNotBlank()) {
+                "\n已捕获对方最新消息：「${currentLatestMsg.take(24)}」"
+            } else {
+                "\n当前未捕获到聊天消息（记忆库已存 ${JobAccessibilityService.memoryCount(this)} 个岗位）"
+            }
             val promptTip = TextView(this).apply {
-                text = "未确认当前岗位 JD\n请先打开岗位详情页读取；聊天页需匹配到相同公司和职位。也可展开上方卡片粘贴完整 JD 后生成。"
+                text = "未确认当前岗位 JD\n请先打开岗位详情页读取；聊天页需匹配到相同公司和职位。也可展开上方卡片粘贴完整 JD 后生成。$chatSummary"
                 setTextColor(Color.parseColor("#64748B"))
                 textSize = 13f
                 gravity = Gravity.CENTER
-                setPadding(0, (24 * density).toInt(), 0, 0)
+                setPadding(0, (20 * density).toInt(), 0, (12 * density).toInt())
                 setLineSpacing(4f, 1.2f)
             }
             contentContainer.addView(promptTip)
+
+            val diagBtn = Button(this).apply {
+                text = "复制抓屏诊断信息"
+                textSize = 12f
+                setTextColor(Color.parseColor("#334155"))
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#F1F5F9"))
+                    cornerRadius = 8 * density
+                    setStroke((1 * density).toInt(), Color.parseColor("#CBD5E1"))
+                }
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    (36 * density).toInt()
+                ).apply {
+                    gravity = Gravity.CENTER_HORIZONTAL
+                }
+                setOnClickListener {
+                    val diag = buildString {
+                        appendLine("模式: ${currentMode.tabTitle}")
+                        appendLine("记忆库岗位数: ${JobAccessibilityService.memoryCount(this@FloatingService)}")
+                        appendLine("聊天记录长度: ${currentChatHistory.length}")
+                        appendLine("最新消息: $currentLatestMsg")
+                        appendLine("--- 屏幕前30行 ---")
+                        currentScreenText.lines().take(30).forEachIndexed { idx, line ->
+                            appendLine("[$idx] $line")
+                        }
+                    }
+                    val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    cm.setPrimaryClip(ClipData.newPlainText("ScreenDiag", diag))
+                    Toast.makeText(this@FloatingService, "已复制抓屏诊断信息", Toast.LENGTH_SHORT).show()
+                }
+            }
+            contentContainer.addView(diagBtn)
         }
     }
 

@@ -68,7 +68,8 @@ class JobAccessibilityService : AccessibilityService() {
                     return
                 }
 
-                val txt = node.text?.toString()?.trim() ?: ""
+                val txt = node.text?.toString()?.trim()?.takeIf { it.isNotBlank() }
+                    ?: node.contentDescription?.toString()?.trim() ?: ""
                 if (txt.isNotBlank()) {
                     if (txt == "已读") {
                         hasReadStatus = true
@@ -76,9 +77,7 @@ class JobAccessibilityService : AccessibilityService() {
                     if (txt == "送达" || txt == "已送达" || txt == "未读") {
                         hasUnreadOrDelivered = true
                     }
-                    if (txt.length >= 2 && !IGNORED_FIXED_TEXTS.contains(txt)) {
-                        allTextLines.add(txt)
-                    }
+                    allTextLines.add(txt)
                 }
 
                 for (i in 0 until node.childCount) {
@@ -145,6 +144,11 @@ class JobAccessibilityService : AccessibilityService() {
         }
 
         fun isLongJdMerged(): Boolean = isMergedLongJd
+
+        fun memoryCount(context: Context): Int {
+            ensureJobMemoryLoaded(context)
+            return synchronized(jobMemory) { jobMemory.size() }
+        }
 
         fun clearAccumulation() {
             accumulatedLines.clear()
@@ -270,7 +274,8 @@ class JobAccessibilityService : AccessibilityService() {
 
         private fun collectNodeLines(node: AccessibilityNodeInfo?, list: MutableList<String>) {
             if (node == null) return
-            val text = node.text?.toString()?.trim()
+            val text = node.text?.toString()?.trim()?.takeIf { it.isNotBlank() }
+                ?: node.contentDescription?.toString()?.trim()
             if (!text.isNullOrEmpty() && isValidJdLine(text)) {
                 list.add(text)
             }

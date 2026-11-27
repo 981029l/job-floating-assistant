@@ -1,6 +1,6 @@
 {
-  "versionCode": 49,
-  "versionName": "1.4.9",
-  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.4.9/JobAssistant-v1.4.9.apk",
-  "releaseNotes": "1. 修复「深入沟通 / 已读未回」读不到已看过岗位 JD：剥离公司全称省市前缀，解决「深圳市xx科技有限公司」与聊天页公司简称匹配失败的问题；同时支持聊天页「公司·在线/刚刚活跃」徽章及纯公司简称精准回查。\n2. 修复「深入沟通」答非所问与漏读短消息：重构聊天记录提取逻辑，保留 HR 短提问（如「在吗」「发份简历」「期望薪资多少」），跳过输入框与界面固定按钮/时间戳噪音，并精准识别对方最新回复。\n3. 沿用统一 debug.keystore 固化签名，支持无缝覆盖安装升级。"
+  "versionCode": 50,
+  "versionName": "1.5.0",
+  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.5.0/JobAssistant-v1.5.0.apk",
+  "releaseNotes": "1. 悬浮窗全新上线「聊天记录 / 对方消息」卡片：在深入沟通、已读未回等场景下直观展示已捕获的历史对话与对方最新提问，配备状态徽章，告别开盲盒。\n2. 支持聊天记录手动校对与一键重生：点击卡片可展开查看完整聊天，支持手动打字编辑或一键粘贴补充 HR 提问，点击「应用并重新生成」即可按新上下文生成精准答复。\n3. 优化读屏短消息防漏：移除底层误过滤规则，确保「发简历」「期望薪资多少」等 HR 真实短消息 100% 捕获，同时过滤候选人顶栏快捷操作按钮噪音。\n4. 沿用统一 debug.keystore 固化签名，支持无缝覆盖安装升级。"
 }

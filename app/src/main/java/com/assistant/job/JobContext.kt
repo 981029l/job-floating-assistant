@@ -29,7 +29,14 @@ internal object JobContext {
     )
     private val companyMetaNoisePattern = Regex("^(?:已上市|未融资|不需要融资|[A-D]轮|天使轮|\\d+[-~]\\d+人|\\d+人以上|\\d{1,2}[-~]\\d{1,2}年|本科|大专|硕士|博士|学历不限|经验不限)$")
 
-    fun normalize(text: String): String = text.trim().replace(Regex("\\s+"), "").lowercase()
+    fun normalize(text: String): String = text.trim()
+        .replace('（', '(')
+        .replace('）', ')')
+        .replace('【', '[')
+        .replace('】', ']')
+        .replace('：', ':')
+        .replace(Regex("\\s+"), "")
+        .lowercase()
 
     fun cleanTitle(text: String): String = text.trim()
         .replace(titlePrefixPattern, "")
@@ -96,6 +103,7 @@ internal object JobContext {
         val company = directCompany
             ?: companyFromCompanyCard(lines).takeIf { it.isNotBlank() }
             ?: header.firstNotNullOfOrNull(::extractCompanyFromHrBadge)
+            ?: lines.firstOrNull(::isVerifiedCompanyLine)
             ?: ""
         return Identity(title, company)
     }
@@ -140,9 +148,10 @@ internal object JobContext {
             !jobWords.containsMatchIn(cleanTitle(trimmed))
     }
 
+    private val topActionChips = setOf("打电话", "换微信", "发简历", "换电话", "不感兴趣", "求简历")
     private val chatUiNoise = setOf(
         "已读", "未读", "送达", "已送达", "在线", "刚刚活跃", "今日活跃", "本周活跃", "本月活跃",
-        "打电话", "换微信", "发简历", "换电话", "不感兴趣", "立即沟通", "聊一聊", "收藏", "分享", "举报", "投递",
+        "立即沟通", "聊一聊", "收藏", "分享", "举报", "投递",
         "点我聊聊", "查看全部", "返回", "更多", "发送", "常用语", "表情", "新消息", "发消息", "按住说话",
         "语音", "图片", "位置", "发送简历", "查看职位", "换手机号", "交换微信", "交换电话", "同意", "拒绝",
         "对方正在输入...", "对方已查看你的简历", "已发送简历", "以上是历史消息"
@@ -162,9 +171,11 @@ internal object JobContext {
     ): List<String> {
         val normTitle = normalize(matchedTitle)
         val result = mutableListOf<String>()
+        val hasTopChipsBlock = allTextLines.take(12).count { it in topActionChips } >= 2
         allTextLines.forEachIndexed { index, raw ->
             val line = raw.trim()
             if (line.length < 2) return@forEachIndexed
+            if (hasTopChipsBlock && index <= 10 && line in topActionChips) return@forEachIndexed
             if (line in chatUiNoise || line in nonCompanyTokens || line in ignoredHeaders) return@forEachIndexed
             if (chatTimestampPattern.matches(line) || chatMetaNoisePattern.matches(line) || companyMetaNoisePattern.matches(line)) return@forEachIndexed
             if (chatBannerNoisePattern.containsMatchIn(line)) return@forEachIndexed
@@ -225,8 +236,21 @@ internal class JobMemoryStore {
         return true
     }
 
+    fun size(): Int = items.size
+
+    private fun matchesTitle(itemTitle: String, titleTokens: Set<String>): Boolean {
+        val normItem = JobContext.normalize(itemTitle)
+        if (normItem in titleTokens) return true
+        return titleTokens.any { token ->
+            (token.endsWith("...") || token.endsWith("…")) &&
+                token.trimEnd('.', '…').let { prefix ->
+                    prefix.length >= 6 && normItem.startsWith(prefix)
+                }
+        }
+    }
+
     fun find(packageName: String, chatLines: List<String>): Item? {
-        val headerLines = chatLines.take(30).map { it.trim() }.filter { it.isNotBlank() }
+        val headerLines = chatLines.take(60).map { it.trim() }.filter { it.isNotBlank() }
         val titleTokens = headerLines.map { JobContext.normalize(JobContext.cleanTitle(it)) }
             .filter { it.isNotBlank() }.toSet()
         val exactCompanyTokens = buildSet {
@@ -237,7 +261,7 @@ internal class JobMemoryStore {
         }
         val exactMatch = items.filter {
             it.packageName == packageName &&
-                JobContext.normalize(it.identity.title) in titleTokens &&
+                matchesTitle(it.identity.title, titleTokens) &&
                 JobContext.normalize(it.identity.company) in exactCompanyTokens
         }
         if (exactMatch.isNotEmpty()) return exactMatch.singleOrNull()
@@ -247,7 +271,7 @@ internal class JobMemoryStore {
         val headerCompanyCandidates = headerLines.filter(JobContext::isCompanyHeaderCandidate)
         return items.singleOrNull { item ->
             item.packageName == packageName &&
-                JobContext.normalize(item.identity.title) in titleTokens &&
+                matchesTitle(item.identity.title, titleTokens) &&
                 (hrBadgeCompanies.any { JobContext.sameCompany(item.identity.company, it) } ||
                     verifiedCompanyLines.any { line ->
                         JobContext.sameCompany(item.identity.company, line) &&

@@ -91,7 +91,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.4.9.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.4.9/JobAssistant-v1.4.9.apk)
+- **最新正式版直链**：[JobAssistant-v1.5.0.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.5.0/JobAssistant-v1.5.0.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -151,6 +151,12 @@ job-floating-assistant/
 ---
 
 ## 版本演进记录
+
+- **v1.5.0**：
+  - 悬浮窗全新上线「聊天记录 / 对方消息」可视化卡片：在深入沟通、已读未回等场景下直观展示已捕获的历史对话与对方最新提问，配备状态徽章，支持点击「查看/修改」展开。
+  - 支持聊天记录手动校对与一键重生：可手动打字或一键【粘贴】补充 HR 提问，点击【应用并重新生成】即刻按新上下文重新生成回复。
+  - 优化读屏短消息防漏：移除底层误过滤规则，确保「发简历」「期望薪资多少」等 HR 真实短消息 100% 捕获，同时过滤候选人顶栏快捷操作按钮噪音。
+  - 补充相关单元测试；沿用统一 `debug.keystore` 签名，支持无缝覆盖安装。
 
 - **v1.4.9**：
   - 修复「深入沟通 / 已读未回」读不到已看过岗位 JD：`JobContext.coreCompanyName()` 剥离省市前缀，解决带城市前缀公司全称与聊天页简称匹配失败问题；兼容 `公司·在线/刚刚活跃` 徽章与纯公司简称回查，优化详情页下滑续接。
