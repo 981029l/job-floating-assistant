@@ -159,6 +159,9 @@ internal object JobContext {
     private val chatTimestampPattern = Regex(
         "^(?:\\d{1,2}:\\d{2}|(?:今天|昨天|前天)\\s*\\d{1,2}:\\d{2}|\\d{4}[-/年]\\d{1,2}[-/月]\\d{1,2}[日号]?(?:\\s*\\d{1,2}:\\d{2})?|\\d{1,2}[-/月]\\d{1,2}[日号]?(?:\\s*\\d{1,2}:\\d{2})?|\\d+\\s*(?:分钟|小时|天)前|刚刚)$"
     )
+    private val chatCityNoisePattern = Regex(
+        "^(?:北京|上海|天津|重庆|深圳|广州|杭州|成都|南京|武汉|西安|苏州|郑州|长沙|东莞|沈阳|青岛|合肥|佛山|宁波|昆明|福州|无锡|厦门|济南|大连|哈尔滨|长春|石家庄|南昌|贵阳|南宁|海口|兰州|太原|呼和浩特|乌鲁木齐|珠海|中山|惠州|常州|温州|绍兴|嘉兴|金华|台州|泉州|烟台|威海|徐州|南通|扬州|盐城|泰州|镇江|昆山|江阴)(?:市)?$"
+    )
     private val chatMetaNoisePattern = Regex(
         "^(?:\\d{1,3}(?:\\.\\d+)?\\s*[-~—至]\\s*\\d{1,3}(?:\\.\\d+)?\\s*[kK万千](?:\\s*[·•xX×*]\\s*\\d{1,2}薪)?|面议|薪资面议|\\d{1,2}[-~]\\d{1,2}年|应届生|经验不限|学历不限|本科|大专|硕士|博士|中专|高中)$"
     )
@@ -176,8 +179,8 @@ internal object JobContext {
             val line = raw.trim()
             if (line.length < 2) return@forEachIndexed
             if (hasTopChipsBlock && index <= 10 && line in topActionChips) return@forEachIndexed
-            if (line in chatUiNoise || line in nonCompanyTokens || line in ignoredHeaders) return@forEachIndexed
-            if (chatTimestampPattern.matches(line) || chatMetaNoisePattern.matches(line) || companyMetaNoisePattern.matches(line)) return@forEachIndexed
+            if (line in chatUiNoise || line in ignoredHeaders) return@forEachIndexed
+            if (chatTimestampPattern.matches(line) || chatMetaNoisePattern.matches(line) || companyMetaNoisePattern.matches(line) || chatCityNoisePattern.matches(line)) return@forEachIndexed
             if (chatBannerNoisePattern.containsMatchIn(line)) return@forEachIndexed
             if (extractCompanyFromHrBadge(line) != null) return@forEachIndexed
 
