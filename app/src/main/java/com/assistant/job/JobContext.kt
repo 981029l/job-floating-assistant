@@ -21,6 +21,7 @@ internal object JobContext {
     private val cityParenPattern = Regex("[（(][^）()]{2,8}[）)]")
     private val cityPrefixPattern = Regex("^(?:中国|北京|上海|天津|重庆|深圳|广州|杭州|成都|南京|武汉|西安|苏州|郑州|长沙|东莞|沈阳|青岛|合肥|佛山|宁波|昆明|福州|无锡|厦门|济南|大连|哈尔滨|长春|石家庄|南昌|贵阳|南宁|海口|兰州|太原|呼和浩特|乌鲁木齐|珠海|中山|惠州|常州|温州|绍兴|嘉兴|金华|台州|泉州|烟台|威海|徐州|南通|扬州|盐城|泰州|镇江|昆山|江阴)(?:市)?|^(?:广东|浙江|江苏|四川|湖北|湖南|福建|山东|河南|河北|安徽|陕西|辽宁|江西)(?:省)?")
     private val legalSuffixPattern = Regex("(?:股份有限公司|有限责任公司|集团有限公司|有限公司|集团)$")
+    private val strictCompanySuffixPattern = Regex("(?:股份有限公司|有限责任公司|集团有限公司|有限公司)$")
     private val nonCompanyTokens = setOf(
         "已读", "未读", "送达", "已送达", "在线", "刚刚活跃", "今日活跃", "本周活跃", "本月活跃",
         "打电话", "换微信", "发简历", "换电话", "不感兴趣", "立即沟通", "聊一聊", "收藏", "分享", "举报", "投递",
@@ -103,7 +104,7 @@ internal object JobContext {
         val company = directCompany
             ?: companyFromCompanyCard(lines).takeIf { it.isNotBlank() }
             ?: header.firstNotNullOfOrNull(::extractCompanyFromHrBadge)
-            ?: lines.firstOrNull(::isVerifiedCompanyLine)
+            ?: lines.firstOrNull { isVerifiedCompanyLine(it) && strictCompanySuffixPattern.containsMatchIn(normalize(it)) }
             ?: ""
         return Identity(title, company)
     }
