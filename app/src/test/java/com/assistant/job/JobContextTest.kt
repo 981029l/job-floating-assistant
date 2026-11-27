@@ -197,4 +197,52 @@ class JobContextTest {
         assertEquals("全栈工程师（独立站电商方向）", JobContext.identity(bossDetail).title)
         assertEquals("英智创新", JobContext.identity(bossDetail).company)
     }
+
+    @Test fun cityPrefixedFullCompanyMatchesShortCompanyInBossChat() {
+        val store = JobMemoryStore()
+        val jdLines = listOf(
+            "全栈工程师（独立站电商方向）",
+            "15-20K",
+            "深圳市英智创新科技有限公司",
+            "岗位职责：",
+            "参与 AI 电商建站平台架构设计与核心功能开发。"
+        )
+        val fullJd = jdLines.joinToString("\n")
+        assertTrue(store.record(packageName, jdLines, fullJd))
+
+        // Chat header with HR badge
+        assertEquals(fullJd, store.find(packageName, listOf("张先生", "英智创新·技术总监", "全栈工程师（独立站电商方向）", "已读"))?.fullJd)
+        // Chat header with active status badge
+        assertEquals(fullJd, store.find(packageName, listOf("张先生", "英智创新 · 刚刚活跃", "沟通职位：全栈工程师（独立站电商方向） 15-20K", "已读"))?.fullJd)
+        // Chat header with bare short company name
+        assertEquals(fullJd, store.find(packageName, listOf("张先生", "英智创新", "全栈工程师（独立站电商方向） | 15-20K", "已读"))?.fullJd)
+    }
+
+    @Test fun extractChatMessagesPreservesShortHrQuestionsAndFiltersUiNoise() {
+        val screenLines = listOf(
+            "张先生",
+            "英智创新·技术总监",
+            "打电话", "换微信", "发简历", "换电话", "不感兴趣",
+            "全栈工程师（独立站电商方向）",
+            "15-20K",
+            "深圳", "5-10年", "本科",
+            "昨天 14:20",
+            "您好，看到您在招全栈工程师，我有7年React与Node.js经验。",
+            "已读",
+            "10:35",
+            "发份简历",
+            "期望薪资多少",
+            "温馨提示：请勿在平台外转账",
+            "常用语", "发送"
+        )
+        val messages = JobContext.extractChatMessages(screenLines, "全栈工程师（独立站电商方向）", "深圳市英智创新科技有限公司")
+        assertEquals(
+            listOf(
+                "您好，看到您在招全栈工程师，我有7年React与Node.js经验。",
+                "发份简历",
+                "期望薪资多少"
+            ),
+            messages
+        )
+    }
 }

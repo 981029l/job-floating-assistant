@@ -65,6 +65,7 @@ class JobAccessibilityService : AccessibilityService() {
                 val cls = node.className?.toString() ?: ""
                 if (cls.contains("EditText")) {
                     hasChatInput = true
+                    return
                 }
 
                 val txt = node.text?.toString()?.trim() ?: ""
@@ -97,9 +98,25 @@ class JobAccessibilityService : AccessibilityService() {
 
             if (hasReadStatus || hasUnreadOrDelivered || hasChatInput) {
                 clearAccumulation()
-                val historyCandidates = allTextLines.filter { it.length >= 8 && !it.startsWith("预览") }
-                val lastLine = historyCandidates.lastOrNull() ?: ""
-                val isHrReplied = historyCandidates.size >= 2 && !lastLine.contains("已读") && !lastLine.contains("送达")
+                ensureJobMemoryLoaded(service)
+                val matchedJob = synchronized(jobMemory) {
+                    jobMemory.find(root.packageName?.toString() ?: "", allTextLines)
+                }
+                lastMatchedJobTitle = matchedJob?.identity?.title ?: ""
+                val jdText = matchedJob?.fullJd ?: ""
+
+                val chatMessages = JobContext.extractChatMessages(
+                    allTextLines,
+                    matchedJob?.identity?.title ?: "",
+                    matchedJob?.identity?.company ?: ""
+                )
+                val lastLine = chatMessages.lastOrNull() ?: ""
+                val lastStatusIndex = allTextLines.indexOfLast { it in setOf("已读", "送达", "已送达", "未读") }
+                val lastMsgIndex = if (lastLine.isNotEmpty()) allTextLines.lastIndexOf(lastLine) else -1
+                val isHrReplied = chatMessages.isNotEmpty() && (
+                    (lastStatusIndex >= 0 && lastMsgIndex > lastStatusIndex) ||
+                        (lastStatusIndex < 0 && chatMessages.size >= 2)
+                )
 
                 val isTechEvaluation = lastLine.contains("转给技术") || lastLine.contains("技术人员") ||
                         lastLine.contains("部门负责人") || lastLine.contains("评估") ||
@@ -114,15 +131,9 @@ class JobAccessibilityService : AccessibilityService() {
                     else -> GenerationMode.READ_UNREPLIED
                 }
 
-                val chatHistory = historyCandidates.takeLast(4).joinToString("\n")
-                val latestMessage = if (isHrReplied) lastLine else (historyCandidates.lastOrNull() ?: "")
+                val chatHistory = chatMessages.takeLast(8).joinToString("\n")
+                val latestMessage = lastLine
 
-                ensureJobMemoryLoaded(service)
-                val matchedJob = synchronized(jobMemory) {
-                    jobMemory.find(root.packageName?.toString() ?: "", allTextLines)
-                }
-                lastMatchedJobTitle = matchedJob?.identity?.title ?: ""
-                val jdText = matchedJob?.fullJd ?: ""
                 val fullScreen = allTextLines.joinToString("\n")
                 val hasResumeMention = fullScreen.contains("简历") || fullScreen.contains("附件")
                 val resumeStatus = if (hasResumeMention) "聊天中已出现简历发送或索要记录" else "暂未发送简历"
@@ -215,7 +226,8 @@ class JobAccessibilityService : AccessibilityService() {
             val hasSection = JobContext.hasJdSection(currentLines)
             val isChat = currentLines.any { it in setOf("已读", "未读", "送达", "已送达") } || hasChatInput(root)
             val isContinuation = accumulatedLines.isNotEmpty() &&
-                (allowScrollContinuation || currentLines.any { it.length >= 20 && it in accumulatedLines })
+                (allowScrollContinuation || currentLines.any { it.length >= 12 && it in accumulatedLines } ||
+                    (pkg == lastActivePackage && !JobContext.changed(lastJobIdentity, identity) && identity.company.isNotBlank()))
             if (isChat || (!hasSection && !isContinuation)) {
                 clearAccumulation()
                 return ""

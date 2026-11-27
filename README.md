@@ -91,7 +91,7 @@
 
 每次代码提交均通过 GitHub Actions 云端虚拟机自动化打包并发布 Releases：
 
-- **最新正式版直链**：[JobAssistant-v1.4.8.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.4.8/JobAssistant-v1.4.8.apk)
+- **最新正式版直链**：[JobAssistant-v1.4.9.apk](https://github.com/981029l/job-floating-assistant/releases/download/v1.4.9/JobAssistant-v1.4.9.apk)
 - **版本发布页面**：[GitHub Releases](https://github.com/981029l/job-floating-assistant/releases)
 - **覆盖安装说明**：从 v1.1.6 开始已固化统一签名，后续每次更新直接下载 APK 覆盖安装即可。
 
@@ -151,6 +151,11 @@ job-floating-assistant/
 ---
 
 ## 版本演进记录
+
+- **v1.4.9**：
+  - 修复「深入沟通 / 已读未回」读不到已看过岗位 JD：`JobContext.coreCompanyName()` 剥离省市前缀，解决带城市前缀公司全称与聊天页简称匹配失败问题；兼容 `公司·在线/刚刚活跃` 徽章与纯公司简称回查，优化详情页下滑续接。
+  - 修复「深入沟通」答非所问与漏读短消息：新增 `JobContext.extractChatMessages()`，保留 HR 短消息（如 `在吗`、`发份简历`、`期望薪资多少`），跳过输入框与界面固定按钮/时间戳噪音，精准判定对方最新回复。
+  - 补充相关单元测试；沿用统一 `debug.keystore` 签名，支持无缝覆盖安装。
 
 - **v1.4.8**：
   - 修复首次破冰识别 BOSS 直聘详情页职位介绍：无障碍分段标记补充「职位详情/岗位详情/职位介绍/岗位介绍/职责描述/工作要求」，彻底解决首次进入 JD 详情页时因大标题匹配不全导致读不到屏幕 JD 的缺陷。

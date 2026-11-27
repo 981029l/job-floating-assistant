@@ -39,13 +39,13 @@ jobs:
       - name: 重命名 APK 文件
         run: |
           mkdir -p release_apk
-          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.8.apk
+          cp app/build/outputs/apk/release/*.apk release_apk/JobAssistant-v1.4.9.apk
 
       - name: 校验 APK 版本与签名
         run: |
           BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0"
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.8.apk
-          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.8.apk > apk-badging.txt
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs release_apk/JobAssistant-v1.4.9.apk
+          "$BUILD_TOOLS/aapt" dump badging release_apk/JobAssistant-v1.4.9.apk > apk-badging.txt
           python3 - <<'PY'
           import json, pathlib, re
           version = json.loads(pathlib.Path('version.json').read_text())
@@ -59,7 +59,7 @@ jobs:
           print(badging.splitlines()[0])
           PY
           cd release_apk
-          sha256sum JobAssistant-v1.4.8.apk > SHA256SUMS.txt
+          sha256sum JobAssistant-v1.4.9.apk > SHA256SUMS.txt
 
       - name: 上传构建产物 (Artifacts)
         uses: actions/upload-artifact@v4
@@ -80,14 +80,14 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.4.8
+          tag_name: v1.4.9
           target_commitish: ${{ github.sha }}
-          name: "AI求职助手 v1.4.8 · 修复首次破冰识别职位详情与匹配标点大小写误判"
+          name: "AI求职助手 v1.4.9 · 修复深入沟通聊天短消息提取与公司省市前缀JD回查"
           body: |
-            修复首次破冰识别 BOSS 直聘详情页职位介绍与岗位逐项匹配引用校验标点误判：
+            修复「深入沟通 / 已读未回」读不到已看过 JD 及聊天短消息漏读导致的答非所问问题：
 
-            - **修复首次破冰识别 BOSS 直聘详情页**：无障碍分段标记补充「职位详情/岗位详情/职位介绍/岗位介绍/职责描述/工作要求」，彻底解决首次进入 JD 详情页时因标题识别不全导致读取不到屏幕岗位 JD 的缺陷。
-            - **修复岗位匹配第一阶段引用校验标点与大小写误判**：优化 `JobMatch.compact()` 规范化算法，统一全角与半角标点映射并转 ASCII 小写比对，彻底杜绝模型返回逗号、括号或大小写不一致触发「岗位匹配引用了简历中不存在的内容」校验误判报错。
+            - **修复带省市前缀公司全称与聊天页简称匹配失败**：`JobContext.coreCompanyName()` 剥离省市前缀，解决 `深圳市xxx科技有限公司` 与聊天页简称匹配失败问题；同时兼容 `公司·在线/刚刚活跃` 徽章与纯公司简称回查。
+            - **重构聊天记录提取与过滤**：新增 `JobContext.extractChatMessages()`，保留 HR 短消息（如 `在吗`、`发份简历`、`期望薪资多少`），跳过 `EditText` 输入框、底部快捷按钮、时间戳与安全提示噪音，精准判断对方是否已回复。
             - 补齐相关单元测试；沿用统一 `debug.keystore` 持久签名，支持无缝覆盖安装。
           files: release_apk/*
         env:

@@ -1,6 +1,6 @@
 {
-  "versionCode": 48,
-  "versionName": "1.4.8",
-  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.4.8/JobAssistant-v1.4.8.apk",
-  "releaseNotes": "1. 修复首次破冰识别 BOSS 直聘详情页职位介绍：扩充识别关键词（支持「职位详情/岗位详情/职位介绍/岗位介绍/职责描述/工作要求」），彻底解决首次进入 JD 详情页时因标题识别不全导致读取不到屏幕岗位 JD 的问题。\n2. 修复岗位匹配第一阶段引用校验标点与大小写误判：优化 compact 规范化算法，将中文全角逗号、括号、冒号等标点与英文统一映射，并统一 ASCII 小写比较，避免模型细微标点格式变化触发「岗位匹配引用了简历中不存在的内容」校验误判报错。\n3. 沿用统一 debug.keystore 固化签名，支持无缝覆盖安装升级。"
+  "versionCode": 49,
+  "versionName": "1.4.9",
+  "downloadUrl": "https://github.com/981029l/job-floating-assistant/releases/download/v1.4.9/JobAssistant-v1.4.9.apk",
+  "releaseNotes": "1. 修复「深入沟通 / 已读未回」读不到已看过岗位 JD：剥离公司全称省市前缀，解决「深圳市xx科技有限公司」与聊天页公司简称匹配失败的问题；同时支持聊天页「公司·在线/刚刚活跃」徽章及纯公司简称精准回查。\n2. 修复「深入沟通」答非所问与漏读短消息：重构聊天记录提取逻辑，保留 HR 短提问（如「在吗」「发份简历」「期望薪资多少」），跳过输入框与界面固定按钮/时间戳噪音，并精准识别对方最新回复。\n3. 沿用统一 debug.keystore 固化签名，支持无缝覆盖安装升级。"
 }

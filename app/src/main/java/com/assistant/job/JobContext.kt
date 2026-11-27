@@ -13,13 +13,21 @@ internal object JobContext {
     private val companyCardHeaders = setOf("公司信息", "公司介绍", "企业信息", "企业介绍")
     private val trailingSections = setOf("公司介绍", "公司信息", "工商信息", "相似职位", "推荐职位", "其他职位", "猜你喜欢")
     private val hrBadgePattern = Regex(
-        "^([^·•・|｜\\s]{2,24})\\s*[·•・|｜]\\s*(?:HR|HRBP|招聘|人事|面试官|技术|前端|后端|全栈|研发|产品|项目|部门|团队|老板|创始人|合伙人|CEO|CTO|VP|总监|经理|主管|负责人|架构师|专家|组长|Leader|Recruiter).*$",
+        "^([^·•・|｜\\s]{2,24})\\s*[·•・|｜]\\s*(?:.*(?:HR|HRBP|招聘|人事|面试|技术|前端|后端|全栈|研发|产品|项目|部门|团队|老板|创始人|合伙人|CEO|CTO|VP|总监|经理|主管|负责人|架构师|专家|组长|Leader|Recruiter)|在线|刚刚活跃|今日活跃|本周活跃|本月活跃|半年前活跃|\\d+[分钟小时天周月]内?活跃).*$",
         RegexOption.IGNORE_CASE
     )
-    private val titlePrefixPattern = Regex("^(?:沟通职位|沟通的职位|沟通过的职位|应聘职位|职位|岗位)[：:]\\s*")
-    private val titleSalarySuffixPattern = Regex("\\s*(?:\\d{1,3}(?:\\.\\d+)?\\s*[-~—至]\\s*\\d{1,3}(?:\\.\\d+)?\\s*[kK万千](?:\\s*[·•xX×*]\\s*\\d{1,2}薪)?|面议|薪资面议)$")
+    private val titlePrefixPattern = Regex("^(?:沟通职位|沟通的职位|沟通过的职位|应聘职位|在招职位|沟通中|职位|岗位)[：:]\\s*")
+    private val titleSalarySuffixPattern = Regex("\\s*(?:[|｜·•]\\s*)?(?:\\d{1,3}(?:\\.\\d+)?\\s*[-~—至]\\s*\\d{1,3}(?:\\.\\d+)?\\s*[kK万千](?:\\s*[·•xX×*]\\s*\\d{1,2}薪)?|面议|薪资面议)$")
     private val cityParenPattern = Regex("[（(][^）()]{2,8}[）)]")
-    private val legalSuffixPattern = Regex("(?:股份有限公司|有限责任公司|有限公司)$")
+    private val cityPrefixPattern = Regex("^(?:中国|北京|上海|天津|重庆|深圳|广州|杭州|成都|南京|武汉|西安|苏州|郑州|长沙|东莞|沈阳|青岛|合肥|佛山|宁波|昆明|福州|无锡|厦门|济南|大连|哈尔滨|长春|石家庄|南昌|贵阳|南宁|海口|兰州|太原|呼和浩特|乌鲁木齐|珠海|中山|惠州|常州|温州|绍兴|嘉兴|金华|台州|泉州|烟台|威海|徐州|南通|扬州|盐城|泰州|镇江|昆山|江阴)(?:市)?|^(?:广东|浙江|江苏|四川|湖北|湖南|福建|山东|河南|河北|安徽|陕西|辽宁|江西)(?:省)?")
+    private val legalSuffixPattern = Regex("(?:股份有限公司|有限责任公司|集团有限公司|有限公司|集团)$")
+    private val nonCompanyTokens = setOf(
+        "已读", "未读", "送达", "已送达", "在线", "刚刚活跃", "今日活跃", "本周活跃", "本月活跃",
+        "打电话", "换微信", "发简历", "换电话", "不感兴趣", "立即沟通", "聊一聊", "收藏", "分享", "举报", "投递",
+        "北京", "上海", "天津", "重庆", "深圳", "广州", "杭州", "成都", "南京", "武汉", "西安", "苏州",
+        "郑州", "长沙", "东莞", "青岛", "合肥", "佛山", "宁波", "厦门", "珠海", "中山", "惠州"
+    )
+    private val companyMetaNoisePattern = Regex("^(?:已上市|未融资|不需要融资|[A-D]轮|天使轮|\\d+[-~]\\d+人|\\d+人以上|\\d{1,2}[-~]\\d{1,2}年|本科|大专|硕士|博士|学历不限|经验不限)$")
 
     fun normalize(text: String): String = text.trim().replace(Regex("\\s+"), "").lowercase()
 
@@ -31,7 +39,12 @@ internal object JobContext {
     fun extractCompanyFromHrBadge(text: String): String? {
         val match = hrBadgePattern.matchEntire(text.trim()) ?: return null
         val company = match.groupValues[1].trim()
-        return company.takeIf { it.length in 2..24 && it !in ignoredHeaders }
+        return company.takeIf {
+            it.length in 2..24 &&
+                it !in ignoredHeaders &&
+                it !in nonCompanyTokens &&
+                !companyMetaNoisePattern.matches(it)
+        }
     }
 
     fun coreCompanyName(text: String): String {
@@ -39,6 +52,7 @@ internal object JobContext {
         if (normalized.isBlank()) return ""
         val stripped = normalized
             .replace(cityParenPattern, "")
+            .replace(cityPrefixPattern, "")
             .replace(legalSuffixPattern, "")
         return if (stripped.length >= 2) stripped else normalized
     }
@@ -107,9 +121,65 @@ internal object JobContext {
         val trimmed = line.trim()
         return trimmed.length in 3..40 &&
             trimmed !in ignoredHeaders &&
+            trimmed !in nonCompanyTokens &&
             !trimmed.contains('：') && !trimmed.contains(':') &&
             !trimmed.contains('。') && !trimmed.contains('，') &&
             companyWords.containsMatchIn(trimmed)
+    }
+
+    fun isCompanyHeaderCandidate(line: String): Boolean {
+        val trimmed = line.trim()
+        return trimmed.length in 3..24 &&
+            trimmed !in ignoredHeaders &&
+            trimmed !in nonCompanyTokens &&
+            !companyMetaNoisePattern.matches(trimmed) &&
+            !trimmed.contains('：') && !trimmed.contains(':') &&
+            !trimmed.contains('。') && !trimmed.contains('，') &&
+            !trimmed.contains('？') && !trimmed.contains('?') &&
+            extractCompanyFromHrBadge(trimmed) == null &&
+            !jobWords.containsMatchIn(cleanTitle(trimmed))
+    }
+
+    private val chatUiNoise = setOf(
+        "已读", "未读", "送达", "已送达", "在线", "刚刚活跃", "今日活跃", "本周活跃", "本月活跃",
+        "打电话", "换微信", "发简历", "换电话", "不感兴趣", "立即沟通", "聊一聊", "收藏", "分享", "举报", "投递",
+        "点我聊聊", "查看全部", "返回", "更多", "发送", "常用语", "表情", "新消息", "发消息", "按住说话",
+        "语音", "图片", "位置", "发送简历", "查看职位", "换手机号", "交换微信", "交换电话", "同意", "拒绝",
+        "对方正在输入...", "对方已查看你的简历", "已发送简历", "以上是历史消息"
+    )
+    private val chatTimestampPattern = Regex(
+        "^(?:\\d{1,2}:\\d{2}|(?:今天|昨天|前天)\\s*\\d{1,2}:\\d{2}|\\d{4}[-/年]\\d{1,2}[-/月]\\d{1,2}[日号]?(?:\\s*\\d{1,2}:\\d{2})?|\\d{1,2}[-/月]\\d{1,2}[日号]?(?:\\s*\\d{1,2}:\\d{2})?|\\d+\\s*(?:分钟|小时|天)前|刚刚)$"
+    )
+    private val chatMetaNoisePattern = Regex(
+        "^(?:\\d{1,3}(?:\\.\\d+)?\\s*[-~—至]\\s*\\d{1,3}(?:\\.\\d+)?\\s*[kK万千](?:\\s*[·•xX×*]\\s*\\d{1,2}薪)?|面议|薪资面议|\\d{1,2}[-~]\\d{1,2}年|应届生|经验不限|学历不限|本科|大专|硕士|博士|中专|高中)$"
+    )
+    private val chatBannerNoisePattern = Regex("^(?:温馨提示|安全提示|求职安全|系统提示|对方想和你|对方请求|预览[：:]|沟通职位[：:]|沟通的职位[：:]|沟通过的职位[：:]|应聘职位[：:])")
+
+    fun extractChatMessages(
+        allTextLines: List<String>,
+        matchedTitle: String = "",
+        matchedCompany: String = ""
+    ): List<String> {
+        val normTitle = normalize(matchedTitle)
+        val result = mutableListOf<String>()
+        allTextLines.forEachIndexed { index, raw ->
+            val line = raw.trim()
+            if (line.length < 2) return@forEachIndexed
+            if (line in chatUiNoise || line in nonCompanyTokens || line in ignoredHeaders) return@forEachIndexed
+            if (chatTimestampPattern.matches(line) || chatMetaNoisePattern.matches(line) || companyMetaNoisePattern.matches(line)) return@forEachIndexed
+            if (chatBannerNoisePattern.containsMatchIn(line)) return@forEachIndexed
+            if (extractCompanyFromHrBadge(line) != null) return@forEachIndexed
+
+            val normCleanTitle = normalize(cleanTitle(line))
+            if (normTitle.isNotBlank() && normCleanTitle == normTitle) return@forEachIndexed
+            if (matchedCompany.isNotBlank() && line.length <= 40 && sameCompany(matchedCompany, line)) return@forEachIndexed
+            // Top bar HR display name (typically 2-4 chars at index 0..2 before job card)
+            if (index <= 2 && line.length in 2..5 && !line.contains('？') && !line.contains('?') && !line.contains('！') && !line.contains('，')) {
+                if (line.endsWith("先生") || line.endsWith("女士") || line.endsWith("老师")) return@forEachIndexed
+            }
+            result.add(line)
+        }
+        return result
     }
 
     fun changed(previous: Identity, current: Identity): Boolean =
@@ -174,11 +244,19 @@ internal class JobMemoryStore {
 
         val hrBadgeCompanies = headerLines.mapNotNull(JobContext::extractCompanyFromHrBadge)
         val verifiedCompanyLines = headerLines.filter(JobContext::isVerifiedCompanyLine)
+        val headerCompanyCandidates = headerLines.filter(JobContext::isCompanyHeaderCandidate)
         return items.singleOrNull { item ->
             item.packageName == packageName &&
                 JobContext.normalize(item.identity.title) in titleTokens &&
                 (hrBadgeCompanies.any { JobContext.sameCompany(item.identity.company, it) } ||
                     verifiedCompanyLines.any { line ->
+                        JobContext.sameCompany(item.identity.company, line) &&
+                            minOf(
+                                JobContext.coreCompanyName(item.identity.company).length,
+                                JobContext.coreCompanyName(line).length
+                            ) >= 3
+                    } ||
+                    headerCompanyCandidates.any { line ->
                         JobContext.sameCompany(item.identity.company, line) &&
                             minOf(
                                 JobContext.coreCompanyName(item.identity.company).length,
